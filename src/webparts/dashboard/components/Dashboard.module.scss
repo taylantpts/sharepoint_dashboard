@@ -1,0 +1,722 @@
+/* Google Fonts importu intranet ortamında engellenebiliyorsa bu satırı
+   kapalı bırakın — aşağıdaki font-family tanımları otomatik olarak
+   Segoe UI / sistem fontuna düşer, tasarım bozulmaz. */
+// @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+/* ------------------------------------------------------------------ *
+ *  Design tokens
+ * ------------------------------------------------------------------ */
+$brand-red: #E31E24;
+$brand-red-dark: #7A1216;
+$ink: #221F1E;
+$cream: #F4F5F7; /* Kartları öne çıkaran çok hafif kontrastlı yeni arkaplan */
+$amber: #D9A44A;
+$line: #E7E1D8;
+$white: #FFFFFF;
+$muted: #8A8378;
+
+$font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+$font-body: 'Inter', 'Segoe UI', sans-serif;
+$font-mono: 'IBM Plex Mono', 'Consolas', monospace;
+
+$radius: 20px; /* Daha yumuşak ve modern köşeler için artırıldı */
+
+@mixin avatar-tone($bg, $fg) {
+    background: $bg;
+    color: $fg;
+}
+
+/* ------------------------------------------------------------------ *
+ *  SHAREPOINT WORKBENCH EZİCİ (Global Hack)
+ *  Bu kod, test ortamındaki zorunlu daraltmaları iptal eder.
+ * ------------------------------------------------------------------ */
+:global {
+  #workbenchPageContent,
+  .CanvasComponent.LCS,
+  .CanvasZone,
+  .CanvasSection,
+  .ControlZone {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Layout / tam sayfa genişliği
+ * ------------------------------------------------------------------ */
+.dashboardContainer {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 32px clamp(16px, 3vw, 48px);
+    background: $cream;
+    font-family: $font-body;
+    color: $ink;
+    min-height: 100vh;
+}
+
+.bentoGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    max-width: 1600px;
+    margin: 0 auto;
+
+    @media (max-width: 1024px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 640px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Kartlar (Bento Grid) Canlılık ve Derinlik
+ * ------------------------------------------------------------------ */
+.card {
+    background: #FFFFFF;
+    border-radius: 20px; 
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.02);
+    /* Fare üzerine geldiğindeki yayınlanma animasyonu */
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    opacity: 0;
+    animation: cardIn 0.5s ease forwards;
+
+    h3 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 14px 0;
+        font-family: $font-display;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    &:hover {
+        transform: translateY(-5px); /* Kartı 5 piksel havaya kaldırır */
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08); /* Havaya kalkınca gölgeyi büyütür */
+    }
+
+    @for $i from 1 through 12 {
+        &:nth-child(#{$i}) {
+            animation-delay: #{$i * 0.05}s;
+        }
+    }
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card {
+        animation: none;
+        opacity: 1;
+        transition: none;
+    }
+}
+
+.cardIcon {
+    font-size: 16px;
+}
+
+.emptyState {
+    margin: 0;
+    font-size: 13px;
+    color: $muted;
+}
+
+.errorState {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: $brand-red-dark;
+    background: #FBEAEA;
+    border: 1px solid rgba(227, 30, 36, 0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+/* Grid span yardımcı sınıfları */
+.span1 { grid-column: span 1; }
+.span2 { grid-column: span 2; }
+.span4 { grid-column: span 4; }
+
+.hero { grid-column: span 4; }
+
+@media (max-width: 1024px) {
+    .hero, .span2, .span4 { grid-column: span 2; }
+    .span1 { grid-column: span 1; }
+}
+
+@media (max-width: 640px) {
+    .hero, .span1, .span2, .span4 { grid-column: span 1; }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Hero (Karşılama Ekranı Şovu)
+ * ------------------------------------------------------------------ */
+.hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    /* Açık kırmızıdan koyu kırmızı/bordoya jilet gibi bir geçiş */
+    background: linear-gradient(135deg, #E31E24 0%, #A01016 100%) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 12px 30px rgba(227, 30, 36, 0.3) !important;
+    border: none !important;
+
+    h1 {
+        font-family: $font-display;
+        font-size: 26px;
+        font-weight: 700;
+        margin: 6px 0 4px 0;
+    }
+
+    p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.85;
+    }
+    
+    .heroText h1, .heroText p, .heroEyebrow {
+        color: #FFFFFF !important;
+    }
+}
+
+.heroEyebrow {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: $amber;
+}
+
+.heroStatus {
+    display: flex;
+    gap: 12px;
+}
+
+/* Saat ve Hava Durumu kutularına "Buzlu Cam" (Glassmorphism) Efekti */
+.statusChip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(12px); /* Arka planı bulanıklaştırır */
+    -webkit-backdrop-filter: blur(12px); /* Safari desteği */
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    color: #FFFFFF !important;
+    border-radius: 14px;
+    padding: 10px 18px;
+    min-width: 84px;
+}
+
+.statusLabel {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.statusValue {
+    font-family: $font-mono;
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Hızlı Bağlantılar (Quick Links) - Ortalanmış ve Düzenli
+ * ------------------------------------------------------------------ */
+.spanFull {
+    grid-column: 1 / -1; /* Tam genişliğe yayılması için */
+}
+
+.quickLinksCard {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: -5px; 
+    
+    &:hover {
+        transform: none !important; /* Arka plan şeffaf olduğu için bu kartın havaya kalkmasını iptal ediyoruz */
+        box-shadow: none !important;
+    }
+}
+
+.quickLinksContainer {
+    display: flex;
+    flex-wrap: wrap; /* Ekrana sığmadığında zarifçe alt satıra geçer */
+    justify-content: center; /* Tam ortaya hizalar */
+    gap: 18px;
+    padding: 15px 5px;
+}
+
+.quickLinkItem {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 105px;
+    height: 100px;
+    background: #FFFFFF;
+    border-radius: 16px;
+    text-decoration: none;
+    color: #1a1a1a; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    &:hover {
+        transform: translateY(-6px);
+        background: #E31E24; 
+        color: #FFFFFF;
+        box-shadow: 0 10px 20px rgba(227, 30, 36, 0.25);
+
+        .quickLinkIcon {
+            transform: scale(1.15);
+        }
+    }
+}
+
+.quickLinkIcon {
+    font-size: 26px;
+    margin-bottom: 8px;
+    transition: transform 0.3s ease;
+}
+
+.quickLinkText {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    padding: 0 6px;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Toplantılarım
+ * ------------------------------------------------------------------ */
+.meetingList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+        display: grid;
+        grid-template-columns: 64px 1fr auto;
+        align-items: baseline;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid $line;
+        font-size: 13px;
+
+        &:last-child { border-bottom: none; }
+    }
+}
+
+.meetingTime {
+    font-family: $font-mono;
+    font-size: 12px;
+    color: $brand-red-dark;
+    font-weight: 600;
+}
+
+.meetingTitle {
+    font-weight: 500;
+}
+
+.meetingLocation {
+    color: $muted;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Duyurular
+ * ------------------------------------------------------------------ */
+.announceBody {
+    min-height: 64px;
+}
+
+.announceTitle {
+    margin: 0 0 4px 0;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.announceText {
+    margin: 0;
+    font-size: 13px;
+    color: $muted;
+    line-height: 1.5;
+}
+
+.dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid $line;
+}
+
+.dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $line;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s ease, transform 0.2s ease;
+
+    &:hover { transform: scale(1.2); }
+}
+
+.dotActive { background: $brand-red; }
+
+.dotsCounter {
+    margin-left: auto;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $muted;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Yeni Paylaşılan Belgeler
+ * ------------------------------------------------------------------ */
+.fileList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid $line;
+        font-size: 13px;
+
+        &:last-child { border-bottom: none; }
+    }
+}
+
+.fileIcon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.fileName {
+    flex: 1;
+    color: $ink;
+    text-decoration: none;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover { color: $brand-red; text-decoration: underline; }
+}
+
+.fileMeta {
+    color: $muted;
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Konumlar / Google Maps
+ * ------------------------------------------------------------------ */
+.locationTabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.locationTab {
+    border: 1px solid $line;
+    background: $cream;
+    color: $ink;
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-family: $font-body;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+
+    &:hover { background: darken($cream, 4%); }
+}
+
+.locationTabActive {
+    background: $brand-red;
+    border-color: $brand-red;
+    color: $white;
+}
+
+.mapFrame {
+    width: 100%;
+    height: 180px;
+    border: 1px solid $line;
+    border-radius: 12px;
+    margin-bottom: 8px;
+}
+
+.mapLink {
+    font-size: 12.5px;
+    color: $brand-red-dark;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Şirket Rehberi & Doğum Günleri
+ * ------------------------------------------------------------------ */
+.filterRow {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.contactSearch {
+    flex: 1;
+    box-sizing: border-box;
+    border: 1px solid $line;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: $font-body;
+
+    &:focus { outline: 2px solid $brand-red; outline-offset: 1px; }
+}
+
+.filterSelect {
+    border: 1px solid $line;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-family: $font-body;
+    background: $white;
+    color: $ink;
+    max-width: 140px;
+}
+
+.contactEmpty {
+    color: $muted;
+    font-size: 12.5px;
+    padding: 8px 0;
+}
+
+.scrollList {
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: $font-display;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+.tone1 { @include avatar-tone(#FBEAEA, $brand-red-dark); }
+.tone2 { @include avatar-tone(#FBF0DD, darken($amber, 20%)); }
+.tone3 { @include avatar-tone(#EAEFEC, #3E6259); }
+.tone4 { @include avatar-tone(#EFEAE3, $ink); }
+
+.peopleList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 4px;
+        border-bottom: 1px solid $line;
+
+        &:last-child { border-bottom: none; }
+    }
+}
+
+.peopleInfo {
+    display: flex;
+    flex-direction: column;
+    font-size: 12.5px;
+    overflow: hidden;
+}
+
+.peopleName {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.peopleSub {
+    color: $muted;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Yardım Merkezi — Bilet/Fiş İmza Öğesi
+ * ------------------------------------------------------------------ */
+.ticketCard {
+    /* Sünmeyi (uzamayı) KESİN OLARAK engeller */
+    align-self: flex-start !important;
+    height: max-content !important;
+    
+    position: relative;
+    overflow: hidden;
+    background: $ink;
+    color: $white;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    h3 { color: $white; }
+
+    p {
+        font-size: 13.5px;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+        line-height: 1.5;
+    }
+}
+
+.ticketTop {
+    padding-bottom: 5px;
+    z-index: 1;
+}
+
+.ticketBottom {
+    padding-top: 5px;
+    /* Kopma hissi için yaylanma (bounce) efekti */
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+    z-index: 1;
+}
+
+.ticketDivider {
+    position: relative;
+    border-top: 2px dashed rgba(255, 255, 255, 0.25);
+    margin: 22px 0;
+    z-index: 0;
+
+    /* Sayfa arka plan rengiyle aynı olan sağ/sol koparma çentikleri */
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        background: $cream; 
+        border-radius: 50%;
+        top: -13px;
+    }
+
+    &::before { left: -36px; } 
+    &::after { right: -36px; } 
+}
+
+/* ---------------- HOVER (ÜZERİNE GELİNCE) ANİMASYONU ---------------- */
+.ticketCard:hover {
+    .ticketBottom {
+        /* Biletin altı kopmuş gibi hafifçe aşağı düşer ve sağa yatar */
+        transform: translateY(8px) rotate(-1.5deg); 
+        opacity: 0.8;
+    }
+}
+
+.ticketAction {
+    display: inline-block;
+    color: $amber;
+    font-family: $font-mono;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover { 
+        text-decoration: underline; 
+        color: #FFFFFF; 
+    }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Görevlerim (To-Do) Widget'ı
+ * ------------------------------------------------------------------ */
+.todoList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    
+    .todoItem {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid $line;
+        
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+}
+
+.todoCheck {
+    width: 18px;
+    height: 18px;
+    border: 2px solid $muted;
+    border-radius: 50%; /* Şık, yuvarlak bir checkbox görünümü */
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    &:hover {
+        border-color: $brand-red;
+        background-color: rgba(227, 30, 36, 0.1);
+    }
+}
+
+.todoTitle {
+    font-size: 13.5px;
+    color: $ink;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.todoDate {
+    font-family: $font-mono;
+    font-size: 11.5px;
+    color: $brand-red-dark;
+    font-weight: 600;
+    background: #FBEAEA;
+    padding: 3px 8px;
+    border-radius: 6px;
+}

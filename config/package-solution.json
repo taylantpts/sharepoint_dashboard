@@ -1,0 +1,59 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "portal-dashboard-client-side-solution",
+    "id": "c0f91753-41bb-4cd8-b0da-852650058cd4",
+    "version": "1.0.0.1",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.19.0"
+    },
+    "webApiPermissionRequests": [
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Calendars.Read"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "User.Read.All"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "AuditLog.Read.All"
+      },
+      
+      { "resource": "Microsoft Graph", "scope": "Calendars.Read" },
+      { "resource": "Microsoft Graph", "scope": "User.Read.All" },
+      { "resource": "Microsoft Graph", "scope": "AuditLog.Read.All" },
+      { "resource": "Microsoft Graph", "scope": "Tasks.Read" }
+    ],
+    "metadata": {
+      "shortDescription": {
+        "default": "portal-dashboard description"
+      },
+      "longDescription": {
+        "default": "portal-dashboard description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "portal-dashboard Feature",
+        "description": "The feature that activates elements of the portal-dashboard solution.",
+        "id": "36080156-25a7-418b-aa0e-a99b82502340",
+        "version": "1.0.0.1"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/portal-dashboard.sppkg"
+  }
+}
