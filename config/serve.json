@@ -1,6 +1,23 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/spfx-serve.schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/core-build/serve.schema.json",
   "port": 4321,
   "https": true,
-  "initialPage": "https://yorpas.sharepoint.com/_layouts/15/workbench.aspx"
+
+  /*
+   * SPFx'in yeni Heft tabanlı serve altyapısı artık yerel bir workbench.html dosyası
+   * SUNMUYOR (localhost:4321/temp/workbench.html her zaman "Cannot GET" döner çünkü
+   * öyle bir dosya/route yok). Local dev sunucusu sadece /dist ve /temp altındaki
+   * build çıktılarını (manifests.js vb.) serve eder; asıl workbench sayfası
+   * yorpas.sharepoint.com tenant'ı tarafından barındırılır ve script'leri CORS ile
+   * bu local sunucudan çeker.
+   */
+  "initialPage": "https://yorpas.sharepoint.com/_layouts/15/workbench.aspx",
+  "serveConfigurations": {
+    "default": {
+      "pageUrl": "https://yorpas.sharepoint.com/_layouts/15/workbench.aspx"
+    },
+    "dashboard-web-part": {
+      "pageUrl": "https://yorpas.sharepoint.com/_layouts/15/workbench.aspx"
+    }
+  }
 }

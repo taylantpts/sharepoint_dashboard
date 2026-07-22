@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/heft/v0/heft.schema.json",
+
+  /*
+   * package.json zaten devDependency olarak @microsoft/spfx-web-build-rig'i tanımlıyordu,
+   * fakat rig'i devreye sokan config/rig.json eksikti. Bütün heft phase/task/alias
+   * tanımları (build, test, package-solution, "start" alias'ı vb.) o rig paketinden
+   * geliyor; burada elle kopyalamak yerine "extends" ile ona devrediyoruz ki
+   * @microsoft/spfx-web-build-rig sürüm güncellemelerinde bu dosya bozulmasın.
+   */
+  "extends": "@microsoft/spfx-web-build-rig/profiles/default/config/heft.json"
+}

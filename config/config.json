@@ -12,7 +12,5 @@
     }
   },
   "externals": {},
-  "localizedResources": {
-    "DashboardWebPartStrings": "lib/webparts/dashboard/loc/{locale}.js"
-  }
+  "localizedResources": {}
 }

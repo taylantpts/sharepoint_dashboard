@@ -2,8 +2,8 @@
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
     "name": "portal-dashboard-client-side-solution",
-    "id": "c0f91753-41bb-4cd8-b0da-852650058cd4",
-    "version": "1.0.0.1",
+    "id": "1f7f1224-0b34-43b2-ad7a-09d6aba661ac",
+    "version": "1.0.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -12,27 +12,8 @@
       "websiteUrl": "",
       "privacyUrl": "",
       "termsOfUseUrl": "",
-      "mpnId": "Undefined-1.19.0"
+      "mpnId": "Undefined-1.23.2"
     },
-    "webApiPermissionRequests": [
-      {
-        "resource": "Microsoft Graph",
-        "scope": "Calendars.Read"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "User.Read.All"
-      },
-      {
-        "resource": "Microsoft Graph",
-        "scope": "AuditLog.Read.All"
-      },
-      
-      { "resource": "Microsoft Graph", "scope": "Calendars.Read" },
-      { "resource": "Microsoft Graph", "scope": "User.Read.All" },
-      { "resource": "Microsoft Graph", "scope": "AuditLog.Read.All" },
-      { "resource": "Microsoft Graph", "scope": "Tasks.Read" }
-    ],
     "metadata": {
       "shortDescription": {
         "default": "portal-dashboard description"
@@ -49,7 +30,33 @@
         "title": "portal-dashboard Feature",
         "description": "The feature that activates elements of the portal-dashboard solution.",
         "id": "36080156-25a7-418b-aa0e-a99b82502340",
-        "version": "1.0.0.1"
+        "version": "1.0.0.0"
+      }
+    ],
+
+    /*
+     * KRİTİK: Bu izinler paketlendikten (npm run build + deploy) SONRA
+     * SharePoint Yönetim Merkezi > Gelişmiş > API erişimi sayfasından bir
+     * yöneticinin ONAYLAMASI gerekir — kod tarafında yapılabilecek bir şey
+     * değildir. Tasks.ReadWrite kasıtlı olarak Tasks.Read DEĞİL: tenant'ta
+     * zaten Tasks.ReadWrite onaylanmış olduğu için scope'u BUNA eşitlemek,
+     * ayrı bir yeni onay turu gerektirmeden (kapsam string'i birebir
+     * eşleştiği için) mevcut onaya "oturmasını" sağlar. Calendars.Read ve
+     * User.Read.All için hâlâ yeni bir onay gerekiyor — paket yeniden
+     * yüklendiğinde API erişimi sayfasında bekleyen istek olarak görünecek.
+     */
+    "webApiPermissionRequests": [
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Tasks.ReadWrite"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Calendars.Read"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "User.Read.All"
       }
     ]
   },

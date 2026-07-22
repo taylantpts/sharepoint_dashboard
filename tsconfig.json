@@ -1,15 +1,6 @@
 {
+  "extends": "./node_modules/@microsoft/spfx-web-build-rig/profiles/default/tsconfig-base.json",
   "compilerOptions": {
-    "target": "es2015",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "jsx": "react",
-    "declaration": true,
-    "sourceMap": true,
-    "experimentalDecorators": true,
-    "skipLibCheck": true,
-    "outDir": "lib",
-    "rootDir": "src",
     "strict": false,
     "baseUrl": ".",
     "paths": {
@@ -19,9 +10,5 @@
       "webpack-env"
     ],
     "ignoreDeprecations": "5.0"
-  },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx"
-  ]
+  }
 }

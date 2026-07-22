@@ -6,4 +6,7 @@ export interface IDashboardProps {
   // Belgeler listeleri) çağrıları için gereken context. Web part'ınızın
   // render metodunda <Dashboard context={this.context} ... /> şeklinde geçin.
   context: WebPartContext;
+  // Property Pane'den girilen OpenWeatherMap API anahtarı — bkz.
+  // DashboardWebPart.ts içindeki IDashboardWebPartProps.weatherApiKey yorumu.
+  weatherApiKey: string;
 }

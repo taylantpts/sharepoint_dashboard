@@ -16,7 +16,8 @@
     "description": { "default": "Dashboard description" },
     "officeFabricIconFontName": "Page",
     "properties": {
-      "description": "Dashboard"
+      "description": "Dashboard",
+      "weatherApiKey": ""
     }
   }]
 }

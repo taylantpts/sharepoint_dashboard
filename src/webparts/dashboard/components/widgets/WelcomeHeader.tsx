@@ -1,0 +1,456 @@
+import * as React from 'react';
+import { Icon, Persona, PersonaSize, mergeStyleSets, keyframes } from '@fluentui/react';
+import { WebPartContext } from '@microsoft/sp-webpart-base';
+import { useTimeAwareTheme, getTimeTheme } from '../../themeManager';
+
+export interface IWelcomeHeaderProps {
+    userDisplayName: string;
+    context: WebPartContext;
+}
+
+const getFirstName = (displayName: string): string => {
+    if (!displayName) {
+        return '';
+    }
+    return displayName.split(' ')[0];
+};
+
+// "Mesh Gradient" — o anki zaman dilimine ait 5 durak arasında yavaşça akan,
+// çok hafif/dağınık bir arka plan. Renkler doğrudan yazılmıyor, CSS
+// değişkenlerinden (--yorpas-theme-mesh-*) okunuyor — ThemeManager bunları
+// güncelledikçe gradyan otomatik yeni paletle boyanır. Bu katman, üstündeki
+// yarı şeffaf beyaz cam katmanının (glassLayer) ALTINDA kalır — bu yüzden
+// kaynak renkler pastel olsa da sonuçta iyice soluklaşmış/zarif bir "enerji"
+// hissi olarak süzülür.
+const meshFlow = keyframes({
+    '0%': { backgroundPosition: '0% 50%' },
+    '50%': { backgroundPosition: '100% 50%' },
+    '100%': { backgroundPosition: '0% 50%' }
+});
+
+// Camın üzerinden yavaşça geçen ince ışık huzmesi — bir cam yüzeyde ışığın
+// kırılması gibi, dikkat çekici ama rahatsız etmeyen bir parıltı.
+const shimmerSweep = keyframes({
+    '0%': { transform: 'translateX(-60%) rotate(10deg)' },
+    '100%': { transform: 'translateX(160%) rotate(10deg)' }
+});
+
+// "Hoş geldin" yanındaki 👋 emojisi hafifçe yukarıda ve eğik duruyor
+// (bkz. waveEmoji'deki statik transform); bu animasyon o eğik duruştan
+// sürekli bir el sallama hareketi üretir.
+const wave = keyframes({
+    '0%, 100%': { transform: 'translateY(-6px) rotate(-8deg)' },
+    '50%': { transform: 'translateY(-6px) rotate(14deg)' }
+});
+
+// Avatarın etrafındaki yeşil "Status Ring" için yumuşak bir nabız/pulse —
+// çevrimiçi olduğunu belli belirsiz ama sürekli hatırlatan bir detay.
+const avatarGlow = keyframes({
+    '0%, 100%': { boxShadow: '0 0 0 0 rgba(52,199,89,0.35), 0 4px 14px rgba(15,23,42,0.10)' },
+    '50%': { boxShadow: '0 0 0 6px rgba(52,199,89,0.12), 0 4px 14px rgba(15,23,42,0.10)' }
+});
+
+// Işıltı (sparkle) süslemeleri için yumuşak bir titreşim.
+const sparkleTwinkle = keyframes({
+    '0%, 100%': { opacity: 0.25, transform: 'scale(0.85)' },
+    '50%': { opacity: 0.85, transform: 'scale(1.1)' }
+});
+
+// Sayfa yüklendiğinde header'ın yavaşça belirmesi (fade-in-up) — bir kerelik,
+// sonsuz döngülü DEĞİL (bkz. root'taki animationIterationCount: 1).
+const fadeInUp = keyframes({
+    '0%': { opacity: 0, transform: 'translateY(16px)' },
+    '100%': { opacity: 1, transform: 'translateY(0)' }
+});
+
+const getTodayLabel = (): string => {
+    const label = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return label.charAt(0).toLocaleUpperCase('tr-TR') + label.slice(1);
+};
+
+/** Saat:dakika ve saniye AYRI döner — saniye, saatten daha küçük/soluk bir "widget" detayı olarak ayrı stillenebilsin diye. */
+const getClockParts = (): { main: string; seconds: string } => {
+    const now = new Date();
+    const main = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const seconds = now.toLocaleTimeString('tr-TR', { second: '2-digit' });
+    return { main, seconds };
+};
+
+/** Saate göre "Günaydın / İyi günler / İyi akşamlar" — motivasyon sözü değil, sade bir kişiselleştirme. */
+const getGreetingPrefix = (bucket: string): string => {
+    if (bucket === 'morning') { return 'Günaydın'; }
+    if (bucket === 'day') { return 'İyi günler'; }
+    return 'İyi akşamlar';
+};
+
+/**
+ * Sayfanın en üstünde tam genişlikte "yüzen" karşılama şeridi — Premium
+ * Kurumsal / Light Glass tasarımı: sabit yarı şeffaf beyaz bir cam paneli
+ * (glassLayer) + arkasında zaman dilimine göre değişen, çok hafif/dağınık
+ * bir mesh gradyanı (meshLayer, bkz. themeManager.ts). `useTimeAwareTheme()`
+ * sayfa yüklendiğinde ve her dakika o anki zaman dilimini kontrol edip
+ * :root üzerindeki --yorpas-theme-* değişkenlerini günceller; bu bileşen o
+ * değişkenleri `var(...)` ile OKUR. Zaman dilimi değiştiğinde geçişler
+ * `transition: background 1.5s ease` ile yumuşak olur.
+ */
+const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
+    const { userDisplayName, context } = props;
+    const firstName = getFirstName(userDisplayName);
+    const [clock, setClock] = React.useState(getClockParts());
+    const timeBucket = useTimeAwareTheme();
+    const headerVariant = getTimeTheme(timeBucket).header;
+
+    React.useEffect(() => {
+        const interval = window.setInterval(() => setClock(getClockParts()), 1000);
+        return () => window.clearInterval(interval);
+    }, []);
+
+    // Kullanıcının kendi profil fotoğrafı — Graph izni/onay beklemeye gerek
+    // kalmadan, her SharePoint sitesinde hazır bulunan userphoto.aspx sistem
+    // sayfasından (aynı origin, ekstra izin gerektirmez) çekiliyor. Persona
+    // bileşeni fotoğraf yüklenemezse (404) otomatik olarak baş harfli rozete
+    // düşer — ayrıca bir onError yönetimine gerek yok.
+    const loginName = context.pageContext.user.loginName;
+    const photoUrl = loginName
+        ? `${context.pageContext.web.absoluteUrl}/_layouts/15/userphoto.aspx?size=L&accountname=${encodeURIComponent(loginName)}`
+        : undefined;
+
+    const styles = mergeStyleSets({
+        root: {
+            position: 'relative',
+            overflow: 'hidden',
+            width: '100%',
+            borderRadius: 20,
+            // Sabit, nötr "floating" gölge — koyu temadaki renkli ışıma yerine
+            // açık/kurumsal bir zeminde süzülüyormuş hissi veren yumuşak gölge.
+            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)',
+            minHeight: 128,
+            boxSizing: 'border-box',
+            animationName: fadeInUp,
+            animationDuration: '0.6s',
+            animationTimingFunction: 'ease-out',
+            animationIterationCount: 1,
+            animationFillMode: 'both'
+        },
+        // Katman 1: çok hafif/dağınık mesh gradyanı — zaman dilimine göre değişir.
+        meshLayer: {
+            position: 'absolute',
+            inset: 0,
+            background:
+                'linear-gradient(45deg, var(--yorpas-theme-mesh-1, #FFD9A6), var(--yorpas-theme-mesh-2, #FFF4E3), ' +
+                'var(--yorpas-theme-mesh-3, #DCF1FF), var(--yorpas-theme-mesh-4, #A9D9F5), ' +
+                'var(--yorpas-theme-mesh-5, #FFE2C2))',
+            backgroundSize: '300% 300%',
+            animationName: meshFlow,
+            animationDuration: '16s',
+            animationTimingFunction: 'ease',
+            animationIterationCount: 'infinite',
+            transition: 'background 1.5s ease'
+        },
+        // Katman 1b: camın üzerinden yavaşça geçen ince ışık huzmesi. ZIndex
+        // BİLİNÇLİ OLARAK glassLayer'ın (2) ÜSTÜNDE (3) — önceki sürümde bu
+        // katman zIndex:1 idi, yani glassLayer'ın (zIndex:2) ALTINDA kalıyordu
+        // ve buzlu/opak cam panelinin arkasında neredeyse tamamen görünmez
+        // oluyordu; "camın üzerinden geçen ışık huzmesi" tarif edildiği hâlde
+        // fiilen hiç görünmüyordu. content ile aynı seviyede olsa da DOM
+        // sırası content'ten önce geldiği için metnin altında/gerisinde kalır.
+        shimmerLayer: {
+            position: 'absolute',
+            top: '-60%',
+            left: 0,
+            width: '35%',
+            height: '220%',
+            background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%)',
+            animationName: shimmerSweep,
+            animationDuration: '7s',
+            animationTimingFunction: 'ease-in-out',
+            animationIterationCount: 'infinite',
+            pointerEvents: 'none',
+            zIndex: 3
+        },
+        // Katman 2: Glassmorphism camı — ÖNCEKİ HATA: bu her zaman sabit beyaz
+        // tutuluyordu, yani üç zaman dilimi de aslında aynı "beyaz cam
+        // üzerinde farklı mesh" görünümüne sahipti — sabah/öğlen/akşam
+        // "tamamen farklı" hissettirmiyordu. Artık camın kendisi de zaman
+        // dilimine göre değişiyor (sabah beyaz/berrak, öğlen krem/"relax",
+        // akşam GERÇEKTEN koyu lacivert) — bkz. themeManager.ts → header.
+        // Yüksek opaklık (0.72-0.82) BİLİNÇLİ: backdrop-filter'ı desteklemeyen
+        // tarayıcılarda (bu portalda doğrulandı — flex "gap" ile aynı sınıf
+        // sorun) dahi bulanıklık OLMADAN, sadece iki opak/yarı-opak rengin
+        // düz alfa karışımıyla bile doğru/okunaklı görünür; blur sadece bir
+        // "bonus" ince detay, doğruluk ona bağlı değil.
+        glassLayer: {
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2,
+            background: 'var(--yorpas-theme-header-glass-bg, rgba(255, 255, 255, 0.72))',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid var(--yorpas-theme-header-glass-border, rgba(255, 255, 255, 0.4))',
+            borderRadius: 20,
+            boxSizing: 'border-box',
+            transition: 'background 1.5s ease, border-color 1.5s ease'
+        },
+        // NOT: "gap" flex özelliği burada BİLİNÇLİ OLARAK KULLANILMIYOR — bu
+        // sayfanın render edildiği (kurumsal/eski) tarayıcı ortamında flex "gap"
+        // desteklenmiyor. `flexWrap: 'wrap'` olduğu için mainRow'a hem
+        // marginRight hem marginBottom veriliyor (dar ekranda alt alta sarınca).
+        content: {
+            position: 'relative',
+            zIndex: 3,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            padding: '28px 40px',
+            boxSizing: 'border-box',
+            minHeight: 128,
+            selectors: {
+                '@media (max-width: 520px)': {
+                    justifyContent: 'flex-start',
+                    padding: '20px 24px'
+                }
+            }
+        },
+        mainRow: {
+            display: 'flex',
+            alignItems: 'center',
+            // content'in (üstteki) headerAction'a benzer bir sonraki kardeşi
+            // (dateTimeBlock) olduğu için "gap" yerine burada kendi payına
+            // düşen marginRight/marginBottom taşınıyor.
+            marginRight: 16,
+            marginBottom: 16
+        },
+        // Avatarın etrafındaki "Status Ring" — çevrimiçi olduğunu gösteren
+        // zarif, yeşil tonlu bir halka (avatarGlow ile yavaşça nabız atar).
+        personaRing: {
+            position: 'relative',
+            borderRadius: '50%',
+            padding: 3,
+            background: 'rgba(52,199,89,0.16)',
+            border: '2px solid rgba(52,199,89,0.55)',
+            transition: 'transform 0.2s ease',
+            cursor: 'default',
+            // mainRow'daki "gap" yerine — textBlock'tan önceki boşluk.
+            marginRight: 18,
+            animationName: avatarGlow,
+            animationDuration: '2.8s',
+            animationTimingFunction: 'ease-in-out',
+            animationIterationCount: 'infinite',
+            selectors: {
+                ':hover': {
+                    transform: 'translateY(-4px)'
+                }
+            }
+        },
+        // Avatarın sağ altındaki küçük "çevrimiçi" rozeti — Status Ring'e ek,
+        // ikinci bir görsel doğrulama (yaygın bir UI konvansiyonu).
+        presenceDot: {
+            position: 'absolute',
+            right: 1,
+            bottom: 1,
+            width: 15,
+            height: 15,
+            borderRadius: '50%',
+            background: '#2ecc71',
+            border: '2.5px solid rgba(255,255,255,0.95)',
+            boxShadow: '0 0 6px rgba(46,204,113,0.6)',
+            zIndex: 1
+        },
+        // Selamlama metninin etrafında dikkat çeken, ama abartısız iki süsleme
+        // detayı — rengi VE karakteri zaman dilimine göre değişir (sabah altın
+        // ışıltı ✦, öğlen sıcak çiçek ❀, akşam soğuk gümüş yıldız ✧) — bkz.
+        // themeManager.ts → header.decorationChar/decorationColor. zIndex
+        // glassLayer'ın (2) ÜSTÜNDE — aksi halde (önceki hata: zIndex:1) buzlu
+        // cam panelinin ARKASINDA kalıp fiilen görünmez oluyordu.
+        sparkle: {
+            position: 'absolute',
+            color: 'var(--yorpas-theme-header-decoration, #F0A868)',
+            pointerEvents: 'none',
+            zIndex: 3,
+            transition: 'color 1.5s ease',
+            animationName: sparkleTwinkle,
+            animationTimingFunction: 'ease-in-out',
+            animationIterationCount: 'infinite'
+        },
+        sparkleOne: {
+            top: 22,
+            left: '48%',
+            fontSize: 15,
+            animationDuration: '3.4s'
+        },
+        sparkleTwo: {
+            bottom: 26,
+            right: '18%',
+            fontSize: 11,
+            animationDuration: '2.6s',
+            animationDelay: '0.6s'
+        },
+        // Header'ın alt kenarındaki ince degrade çizgi — o anki zaman dilimi
+        // paletinden (mesh-1/3/5) beslenir, WidgetCard'ların üst aksan
+        // çizgisiyle aynı görsel dili header'a da taşır.
+        bottomAccent: {
+            position: 'absolute',
+            left: 14,
+            right: 14,
+            bottom: 3,
+            height: 3,
+            borderRadius: 2,
+            background:
+                'linear-gradient(90deg, var(--yorpas-theme-mesh-1, #FFD9A6) 0%, ' +
+                'var(--yorpas-theme-mesh-3, #DCF1FF) 50%, var(--yorpas-theme-mesh-5, #FFE2C2) 100%)',
+            opacity: 0.9,
+            zIndex: 2,
+            pointerEvents: 'none',
+            transition: 'background 1.5s ease'
+        },
+        textBlock: {},
+        // "GÜNAYDIN" — ince, tamamen büyük harf, geniş harf aralığı, soluk slate.
+        // NOT: "gap" burada da kullanılmıyor (flex "gap" desteklenmiyor) — ikon
+        // için ayrı bir sınıf (greetingPrefixIcon) marginRight taşıyor.
+        greetingPrefix: {
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--yorpas-theme-header-muted, #64748B)',
+            textTransform: 'uppercase',
+            letterSpacing: 2,
+            margin: 0,
+            transition: 'color 1.5s ease'
+        },
+        greetingPrefixIcon: {
+            marginRight: 6
+        },
+        // İsim satırı: "Hoş geldin," daha yumuşak, isim ise kalın/keskin/koyu slate.
+        // NOT: "gap" burada kullanılmıyor — ilk çocuk düz bir metin (text node)
+        // olduğu için ona margin verilemiyor; bunun yerine SONRAKİ elemanlara
+        // (greetingName, waveEmoji) marginLeft veriliyor — aynı görsel sonucu üretir.
+        greeting: {
+            display: 'flex',
+            alignItems: 'center',
+            fontFamily: "'Segoe UI', -apple-system, sans-serif",
+            fontSize: 30,
+            fontWeight: 400,
+            color: 'var(--yorpas-theme-text, #334155)',
+            margin: '6px 0 0',
+            letterSpacing: 0.1
+        },
+        greetingName: {
+            fontWeight: 800,
+            color: 'var(--yorpas-theme-header-name, #0F172A)',
+            marginLeft: 8,
+            transition: 'color 1.5s ease'
+        },
+        // Eğik ve hafifçe yukarıda duran el sallama emojisi (statik konum bu
+        // transform'da, sallanma hareketi wave animasyonundan gelir). marginLeft
+        // = eski "gap" (8) + kendi ince konum düzeltmesi (2).
+        waveEmoji: {
+            display: 'inline-block',
+            fontSize: 24,
+            marginLeft: 10,
+            transformOrigin: '70% 70%',
+            animationName: wave,
+            animationDuration: '1.6s',
+            animationTimingFunction: 'ease-in-out',
+            animationIterationCount: 'infinite'
+        },
+        // Sağ taraf: saat kendi başına bir "widget" gibi — büyük/ince ana
+        // kısım + küçük/soluk saniye, tarih altında ince bir hizada.
+        dateTimeBlock: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            selectors: {
+                '@media (max-width: 520px)': {
+                    alignItems: 'flex-start'
+                }
+            }
+        },
+        // NOT: "gap" burada kullanılmıyor — clockMain'e doğrudan marginRight verildi.
+        clockRow: {
+            display: 'flex',
+            alignItems: 'baseline'
+        },
+        clockMain: {
+            fontFamily: "'Segoe UI Light', 'Segoe UI', sans-serif",
+            fontSize: 36,
+            fontWeight: 200,
+            color: 'var(--yorpas-theme-header-clock, #1E293B)',
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: 0.5,
+            lineHeight: '40px',
+            marginRight: 2,
+            transition: 'color 1.5s ease'
+        },
+        clockSeconds: {
+            fontFamily: "'Segoe UI Light', 'Segoe UI', sans-serif",
+            fontSize: 16,
+            fontWeight: 300,
+            color: 'var(--yorpas-theme-header-clock-seconds, rgba(30,41,59,0.45))',
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: '20px',
+            transition: 'color 1.5s ease'
+        },
+        // NOT: "gap" burada kullanılmıyor — Icon'a ayrı bir sınıf (dateTextIcon)
+        // üzerinden marginRight veriliyor.
+        dateText: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--yorpas-theme-header-date, rgba(51,65,85,0.72))',
+            lineHeight: '18px',
+            marginTop: 3,
+            transition: 'color 1.5s ease'
+        },
+        dateTextIcon: {
+            marginRight: 6
+        }
+    });
+
+    return (
+        <div className={styles.root}>
+            <span className={styles.meshLayer} />
+            <span className={styles.shimmerLayer} />
+            <span className={styles.glassLayer} />
+            <span className={[styles.sparkle, styles.sparkleOne].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
+            <span className={[styles.sparkle, styles.sparkleTwo].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
+            <span className={styles.bottomAccent} aria-hidden="true" />
+            <div className={styles.content}>
+                <div className={styles.mainRow}>
+                    <div className={styles.personaRing}>
+                        <Persona
+                            imageUrl={photoUrl}
+                            text={userDisplayName}
+                            size={PersonaSize.size72}
+                            hidePersonaDetails
+                            imageAlt={userDisplayName}
+                        />
+                        <span className={styles.presenceDot} aria-hidden="true" />
+                    </div>
+                    <div className={styles.textBlock}>
+                        <p className={styles.greetingPrefix}><Icon iconName={headerVariant.greetingIcon} className={styles.greetingPrefixIcon} /> {getGreetingPrefix(timeBucket)}</p>
+                        <p className={styles.greeting}>
+                            Hoş geldin, <span className={styles.greetingName}>{firstName || 'Kullanıcı'}</span>
+                            <span className={styles.waveEmoji} aria-hidden="true">👋</span>
+                        </p>
+                    </div>
+                </div>
+                <div className={styles.dateTimeBlock}>
+                    <div className={styles.clockRow}>
+                        <span className={styles.clockMain}>{clock.main}</span>
+                        <span className={styles.clockSeconds}>:{clock.seconds}</span>
+                    </div>
+                    <div className={styles.dateText}>
+                        <Icon iconName="Calendar" className={styles.dateTextIcon} />
+                        {getTodayLabel()}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default WelcomeHeader;

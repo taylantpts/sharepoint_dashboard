@@ -14,6 +14,8 @@
     "@fluentui/react": "^8.106.4",
     "@microsoft/sp-component-base": "1.23.2",
     "@microsoft/sp-core-library": "1.23.2",
+    "@microsoft/sp-http": "1.23.2",
+    "@microsoft/sp-http-msgraph": "1.23.2",
     "@microsoft/sp-lodash-subset": "1.23.2",
     "@microsoft/sp-office-ui-fabric-core": "1.23.2",
     "@microsoft/sp-property-pane": "1.23.2",

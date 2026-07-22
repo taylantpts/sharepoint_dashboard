@@ -36,3 +36,7 @@ obj
 
 # Styles Generated Code
 *.scss.ts
+
+# Yerel geliştirme için gizli anahtarlar — asla commit edilmez.
+# Şablonu: src/webparts/dashboard/weatherApiKey.local.example.ts
+src/webparts/dashboard/weatherApiKey.local.ts

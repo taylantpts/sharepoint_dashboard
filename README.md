@@ -19,7 +19,13 @@ Short summary on functionality and used technologies.
 
 ## Prerequisites
 
-> Any special pre-requisites?
+Before `npm install` / `heft start`, create the local weather API key file (this file is gitignored — it is never committed, so every clone must create it once):
+
+```
+copy src\webparts\dashboard\weatherApiKey.local.example.ts src\webparts\dashboard\weatherApiKey.local.ts
+```
+
+Then open the new `weatherApiKey.local.ts` and fill in a free OpenWeatherMap API key. Without this file, the build fails to compile (`DashboardWebPart.ts` imports it directly). The value set via the web part's Property Pane ("OpenWeatherMap API Anahtarı") always takes priority over this local fallback — this file only matters when the Property Pane field is empty (e.g. during local workbench testing).
 
 ## Solution
 

@@ -1,0 +1,4 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/core-build/copy-static-assets.schema.json",
+  "workingFolder": "./temp/deploy"
+}
