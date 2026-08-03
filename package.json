@@ -8,7 +8,8 @@
   "scripts": {
     "build": "heft test --clean --production && heft package-solution --production",
     "clean": "heft clean",
-    "start": "heft start --clean"
+    "start": "node scripts/open-when-ready.js",
+    "start:manual": "heft start --clean --nobrowser"
   },
   "dependencies": {
     "@fluentui/react": "^8.106.4",

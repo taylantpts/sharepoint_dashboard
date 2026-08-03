@@ -10,11 +10,17 @@ import CompanyDirectory from './widgets/CompanyDirectory';
 import AnnouncementsFeed from './widgets/AnnouncementsFeed';
 import UpcomingEvents from './widgets/UpcomingEvents';
 import ITSupportCenter from './widgets/ITSupportCenter';
+import HRPortalCard from './widgets/HRPortalCard';
 import MyAssetsCard from './widgets/MyAssetsCard';
 import RequiredDocuments from './widgets/RequiredDocuments';
 import LocationCard from './widgets/LocationCard';
 import FeedbackForm from './widgets/FeedbackForm';
 import PersonalAssistant from './widgets/PersonalAssistant';
+import HolidaysWidget from './widgets/HolidaysWidget';
+import ExchangeRatesWidget from './widgets/ExchangeRatesWidget';
+import NewsWidget from './widgets/NewsWidget';
+import ISGCalendarWidget from './widgets/ISGCalendarWidget';
+import BirthdaysWidget from './widgets/BirthdaysWidget';
 
 const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
     return (
@@ -42,6 +48,9 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                             <CompanyDirectory context={props.context} />
                         </div>
                         <div className={styles.quadItem}>
+                            <BirthdaysWidget context={props.context} />
+                        </div>
+                        <div className={styles.quadItem}>
                             <UpcomingEvents context={props.context} />
                         </div>
                         <div className={styles.quadItem}>
@@ -50,15 +59,35 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                     </div>
                 </div>
 
+                <div className={styles.areaHolidays}>
+                    <HolidaysWidget />
+                </div>
+                <div className={styles.areaExchange}>
+                    <ExchangeRatesWidget />
+                </div>
+                {/* Gerekli Dosyalar ve Haberler kasıtlı olarak yer değiştirdi: Gerekli
+                    Dosyalar artık BT Destek Merkezi ile, Haberler ise İSG Takvimi ile
+                    aynı satırda — grid alanlarının (areaNews/areaDocuments) KENDİSİ
+                    değişmedi, sadece hangi widget'ın hangi alanda göründüğü değişti. */}
+                <div className={styles.areaNews}>
+                    <RequiredDocuments context={props.context} />
+                </div>
+
                 <div className={styles.areaSupport}>
                     <ITSupportCenter />
+                </div>
+                <div className={styles.areaHR}>
+                    <HRPortalCard />
                 </div>
                 <div className={styles.areaAssets}>
                     <MyAssetsCard />
                 </div>
 
                 <div className={styles.areaDocuments}>
-                    <RequiredDocuments context={props.context} />
+                    <NewsWidget />
+                </div>
+                <div className={styles.areaISGCalendar}>
+                    <ISGCalendarWidget context={props.context} />
                 </div>
                 <div className={styles.areaLocationOffice}>
                     <LocationCard

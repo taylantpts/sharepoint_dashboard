@@ -56,6 +56,21 @@ const sparkleTwinkle = keyframes({
     '50%': { opacity: 0.85, transform: 'scale(1.1)' }
 });
 
+// Avatarın arkasında yavaşça büyüyüp küçülen, zaman dilimi rengindeki bulanık
+// "halo" — karşılama header'ına daha dikkat çekici, "spotlight" hissi veren
+// odak noktası. Işıltılarla aynı ailede ama daha büyük/yumuşak bir hareket.
+const haloPulse = keyframes({
+    '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.55 },
+    '50%': { transform: 'translate(-50%, -50%) scale(1.2)', opacity: 0.85 }
+});
+
+// Header'ın dış kenarında zaman dilimi rengiyle yavaşça nefes alan bir
+// ışıma — sabit gölgeye ek, ikinci (ayrı) bir animasyon katmanı olarak.
+const edgeGlow = keyframes({
+    '0%, 100%': { boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08), 0 0 0px 0px var(--yorpas-theme-header-decoration, transparent)' },
+    '50%': { boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08), 0 0 30px 2px var(--yorpas-theme-header-decoration, transparent)' }
+});
+
 // Sayfa yüklendiğinde header'ın yavaşça belirmesi (fade-in-up) — bir kerelik,
 // sonsuz döngülü DEĞİL (bkz. root'taki animationIterationCount: 1).
 const fadeInUp = keyframes({
@@ -126,11 +141,14 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)',
             minHeight: 128,
             boxSizing: 'border-box',
-            animationName: fadeInUp,
-            animationDuration: '0.6s',
-            animationTimingFunction: 'ease-out',
-            animationIterationCount: 1,
-            animationFillMode: 'both'
+            // İki AYRI animasyon aynı anda: fadeInUp bir kerelik giriş,
+            // edgeGlow ise header açık kaldığı sürece sonsuz döngüde nefes
+            // alan zaman-dilimi renginde bir dış ışıma.
+            animationName: `${fadeInUp}, ${edgeGlow}`,
+            animationDuration: '0.6s, 4.5s',
+            animationTimingFunction: 'ease-out, ease-in-out',
+            animationIterationCount: '1, infinite',
+            animationFillMode: 'both, none'
         },
         // Katman 1: çok hafif/dağınık mesh gradyanı — zaman dilimine göre değişir.
         meshLayer: {
@@ -243,6 +261,31 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
                 }
             }
         },
+        // Avatarın ARKASINDA, zaman dilimi rengiyle yavaşça büyüyüp küçülen
+        // bulanık bir "halo" — header'a daha dikkat çekici bir odak noktası
+        // katar. avatarContent'in (Persona + rozet) GERİSİNDE kalması için
+        // zIndex 0, avatarContent ise açıkça zIndex 1.
+        avatarHalo: {
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: 122,
+            height: 122,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, var(--yorpas-theme-header-decoration, #F0A868) 0%, transparent 68%)',
+            filter: 'blur(10px)',
+            zIndex: 0,
+            pointerEvents: 'none',
+            transition: 'background 1.5s ease',
+            animationName: haloPulse,
+            animationDuration: '3.6s',
+            animationTimingFunction: 'ease-in-out',
+            animationIterationCount: 'infinite'
+        },
+        avatarContent: {
+            position: 'relative',
+            zIndex: 1
+        },
         // Avatarın sağ altındaki küçük "çevrimiçi" rozeti — Status Ring'e ek,
         // ikinci bir görsel doğrulama (yaygın bir UI konvansiyonu).
         presenceDot: {
@@ -259,7 +302,7 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
         },
         // Selamlama metninin etrafında dikkat çeken, ama abartısız iki süsleme
         // detayı — rengi VE karakteri zaman dilimine göre değişir (sabah altın
-        // ışıltı ✦, öğlen sıcak çiçek ❀, akşam soğuk gümüş yıldız ✧) — bkz.
+        // ışıltı ✦, öğlen sıcak parıltı ✴, akşam soğuk gümüş yıldız ✧) — bkz.
         // themeManager.ts → header.decorationChar/decorationColor. zIndex
         // glassLayer'ın (2) ÜSTÜNDE — aksi halde (önceki hata: zIndex:1) buzlu
         // cam panelinin ARKASINDA kalıp fiilen görünmez oluyordu.
@@ -285,6 +328,22 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             fontSize: 11,
             animationDuration: '2.6s',
             animationDelay: '0.6s'
+        },
+        // İki ek ışıltı — header'a daha "canlı"/dikkat çekici bir his katmak
+        // için (toplam 4), her biri farklı boyut/konum/zamanlamayla.
+        sparkleThree: {
+            top: 46,
+            right: '30%',
+            fontSize: 9,
+            animationDuration: '4.1s',
+            animationDelay: '1.1s'
+        },
+        sparkleFour: {
+            bottom: 40,
+            left: '38%',
+            fontSize: 13,
+            animationDuration: '3.1s',
+            animationDelay: '1.7s'
         },
         // Header'ın alt kenarındaki ince degrade çizgi — o anki zaman dilimi
         // paletinden (mesh-1/3/5) beslenir, WidgetCard'ların üst aksan
@@ -330,7 +389,7 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             display: 'flex',
             alignItems: 'center',
             fontFamily: "'Segoe UI', -apple-system, sans-serif",
-            fontSize: 30,
+            fontSize: 32,
             fontWeight: 400,
             color: 'var(--yorpas-theme-text, #334155)',
             margin: '6px 0 0',
@@ -417,18 +476,23 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             <span className={styles.glassLayer} />
             <span className={[styles.sparkle, styles.sparkleOne].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
             <span className={[styles.sparkle, styles.sparkleTwo].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
+            <span className={[styles.sparkle, styles.sparkleThree].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
+            <span className={[styles.sparkle, styles.sparkleFour].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
             <span className={styles.bottomAccent} aria-hidden="true" />
             <div className={styles.content}>
                 <div className={styles.mainRow}>
                     <div className={styles.personaRing}>
-                        <Persona
-                            imageUrl={photoUrl}
-                            text={userDisplayName}
-                            size={PersonaSize.size72}
-                            hidePersonaDetails
-                            imageAlt={userDisplayName}
-                        />
-                        <span className={styles.presenceDot} aria-hidden="true" />
+                        <span className={styles.avatarHalo} aria-hidden="true" />
+                        <div className={styles.avatarContent}>
+                            <Persona
+                                imageUrl={photoUrl}
+                                text={userDisplayName}
+                                size={PersonaSize.size72}
+                                hidePersonaDetails
+                                imageAlt={userDisplayName}
+                            />
+                            <span className={styles.presenceDot} aria-hidden="true" />
+                        </div>
                     </div>
                     <div className={styles.textBlock}>
                         <p className={styles.greetingPrefix}><Icon iconName={headerVariant.greetingIcon} className={styles.greetingPrefixIcon} /> {getGreetingPrefix(timeBucket)}</p>

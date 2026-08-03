@@ -85,7 +85,7 @@ const THEMES: Record<TimeBucket, ITimeTheme> = {
             clockSecondsText: 'rgba(74,54,36,0.45)',
             dateText: 'rgba(90,70,50,0.72)',
             greetingIcon: 'Coffee',
-            decorationChar: '❀',
+            decorationChar: '✴',
             decorationColor: '#C98A54'
         }
     },

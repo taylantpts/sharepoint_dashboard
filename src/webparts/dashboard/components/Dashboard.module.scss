@@ -89,8 +89,11 @@
     grid-template-areas:
         'announcements announcements announcements announcements announcements announcements announcements announcements weather weather weather weather'
         'quad quad quad quad quad quad quad quad quad quad quad quad'
-        'support support support support support support assets assets assets assets assets assets'
-        'documents documents documents documents locationOffice locationOffice locationOffice locationOffice locationFactory locationFactory locationFactory locationFactory'
+        'holidays holidays holidays holidays holidays holidays exchange exchange exchange exchange exchange exchange'
+        'news news news news news news support support support support support support'
+        'hr hr hr hr hr hr assets assets assets assets assets assets'
+        'documents documents documents documents documents documents isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar'
+        'locationOffice locationOffice locationOffice locationOffice locationOffice locationOffice locationFactory locationFactory locationFactory locationFactory locationFactory locationFactory'
         'feedback feedback feedback feedback feedback feedback feedback feedback feedback feedback feedback feedback';
     /* Aynı satırdaki kartlar birbirine hizalı görünsün diye "stretch" — her
      * satırdaki kartlar, o satırın en uzun kartıyla aynı yüksekliğe gelir. */
@@ -123,6 +126,12 @@
     width: 100%;
     /* Her satırdaki iki kart birbirine eşit yükseklikte olsun. */
     align-items: stretch;
+
+    /* Doğum Günleri eklenince 5 widget'a çıktı — tek başına kalan son öğe
+     * (Kişisel Asistan) yarım genişlikte yalnız kalmasın diye tam satırı kaplar. */
+    .quadItem:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
 }
 
 .quadItem {
@@ -131,6 +140,26 @@
 
 .areaSupport {
     grid-area: support;
+    min-width: 0;
+}
+
+.areaHR {
+    grid-area: hr;
+    min-width: 0;
+}
+
+.areaHolidays {
+    grid-area: holidays;
+    min-width: 0;
+}
+
+.areaExchange {
+    grid-area: exchange;
+    min-width: 0;
+}
+
+.areaNews {
+    grid-area: news;
     min-width: 0;
 }
 
@@ -159,6 +188,11 @@
     min-width: 0;
 }
 
+.areaISGCalendar {
+    grid-area: isgCalendar;
+    min-width: 0;
+}
+
 /* ---------------------------------------------------------------------
  * RESPONSIVE KIRILMA NOKTALARI
  * Masaüstü (>=1024px): yukarıdaki geniş 12 sütunlu Bento Grid (varsayılan).
@@ -174,8 +208,10 @@
             'announcements announcements'
             'weather weather'
             'quad quad'
-            'support assets'
-            'documents documents'
+            'holidays exchange'
+            'news support'
+            'hr assets'
+            'documents isgCalendar'
             'locationOffice locationFactory'
             'feedback feedback';
     }
@@ -196,9 +232,14 @@
             'announcements'
             'weather'
             'quad'
+            'holidays'
+            'exchange'
+            'news'
             'support'
+            'hr'
             'assets'
             'documents'
+            'isgCalendar'
             'locationOffice'
             'locationFactory'
             'feedback';

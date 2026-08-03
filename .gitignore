@@ -40,3 +40,7 @@ obj
 # Yerel geliştirme için gizli anahtarlar — asla commit edilmez.
 # Şablonu: src/webparts/dashboard/weatherApiKey.local.example.ts
 src/webparts/dashboard/weatherApiKey.local.ts
+
+# Claude Code'un bu makineye özel yerel ayarları (izin listesi, bu repoyla
+# alakasız yerel launch config'leri) — paylaşılan repoya girmemeli.
+.claude/

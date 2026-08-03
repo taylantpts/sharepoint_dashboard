@@ -19,9 +19,24 @@ const hexToRgb = (hex: string): [number, number, number] => {
     return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
 };
 
+// ÖNCEKİ HATA: mixHex'in çıktısı ("rgb(r, g, b)" formatında bir STRING) bazen
+// tekrar mixHex/hexToRgba'ya "hex" gibi geçiriliyordu (ör. flairAccent, ya da
+// yeni eklenen ambientBase zincirlemesi) — hexToRgb bu "rgb(...)" string'ini
+// hex sanıp parseInt ile NaN üretiyordu, bu da "rgb(NaN, NaN, NaN)" gibi
+// geçersiz bir renkle sonuçlanıp kartların (arka plan gibi zorunlu alanlarda)
+// siyaha/bozuk görünmesine yol açıyordu. parseColorToRgb hem "#rrggbb" hem
+// "rgb(r, g, b)" girdisini ayrıştırabildiği için zincirleme HER ZAMAN güvenli.
+const parseColorToRgb = (color: string): [number, number, number] => {
+    const rgbMatch = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
+    if (rgbMatch) {
+        return [parseInt(rgbMatch[1], 10), parseInt(rgbMatch[2], 10), parseInt(rgbMatch[3], 10)];
+    }
+    return hexToRgb(color);
+};
+
 /** "#0078d4" -> "rgba(0,120,212,alpha)" — ikon rozetindeki renkli parlama (glow) gölgesi için. */
 const hexToRgba = (hex: string, alpha: number): string => {
-    const [r, g, b] = hexToRgb(hex);
+    const [r, g, b] = parseColorToRgb(hex);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
@@ -39,8 +54,8 @@ const hexToRgba = (hex: string, alpha: number): string => {
  * olsun HER ZAMAN aynı görünür.
  */
 const mixHex = (hex: string, baseHex: string, weight: number): string => {
-    const [r1, g1, b1] = hexToRgb(hex);
-    const [r2, g2, b2] = hexToRgb(baseHex);
+    const [r1, g1, b1] = parseColorToRgb(hex);
+    const [r2, g2, b2] = parseColorToRgb(baseHex);
     const mix = (a: number, b: number): number => Math.round(a * weight + b * (1 - weight));
     return `rgb(${mix(r1, r2)}, ${mix(g1, g2)}, ${mix(b1, b2)})`;
 };
@@ -61,27 +76,30 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
 
     // Kullanıcı isteği: "3 tema da birbirinden farklı olacak — arkaplan,
     // widgetlar ve özellikle karşılama header'ı FULL birbirinden farklı renk
-    // paletleri kullanacak." Ancak kartların KENDİSİ (zemin) daha önce
-    // kasıtlı olarak sabit/açık bırakılmıştı (bkz. yukarıdaki not — tam koyu
-    // widget teması denenip kullanıcı geri bildirimiyle geri alınmıştı) ve
-    // kullanıcı bunu onayladı: kart zemini AÇIK kalsın, sadece "vurgular"
-    // (üst şerit + ikon rozeti) zaman dilimine göre değişsin. Bu yüzden her
-    // widget'ın KENDİ kimlik rengi (accent, örn. Duyurular turuncu, Yaklaşan
-    // Etkinlikler mor) o anki zaman temasının süsleme rengiyle (headerVariant.
-    // decorationColor) harmanlanıyor — widget'lar birbirinden hâlâ ayırt
-    // edilebilir kalırken, günün o anki paleti de her karttan hissediliyor.
+    // paletleri kullanacak." Kartların KENDİSİ (zemin) daha önce kasıtlı
+    // olarak sabit/açık bırakılmıştı (tam koyu widget teması denenip
+    // kullanıcı geri bildirimiyle geri alınmıştı) — bu hâlâ geçerli, kart
+    // AÇIK/okunaklı kalıyor. Ama kullanıcı sonradan "tüm widget'larda renk
+    // paleti düzenlemeleri" istedi; bu yüzden zaman diliminin hissi artık
+    // sadece ince bir üst şeritle sınırlı değil: (1) şerit/ikon rozeti daha
+    // BASKIN bir harmanla (0.45 -> 0.6) günün rengini taşıyor, (2) kartın
+    // kendi zemin degradesi de artık nötr yerine hafif bir "ambiyans" tonuyla
+    // (ambientBase, %8 harman — okunurluğu bozmayacak kadar hafif) başlıyor.
+    // Widget'ın KENDİ kimlik rengi (accent, ör. Duyurular turuncu) hep
+    // ayırt edilebilir kalıyor, günün paleti üstüne ince bir kat gibi biniyor.
     const timeBucket = useTimeAwareTheme();
     const headerVariant = getTimeTheme(timeBucket).header;
-    const flairAccent = mixHex(headerVariant.decorationColor, accent, 0.45);
+    const flairAccent = mixHex(headerVariant.decorationColor, accent, 0.6);
+    const ambientBase = mixHex(headerVariant.decorationColor, theme.palette.neutralLighterAlt, 0.08);
 
     const styles = mergeStyleSets({
         card: {
             position: 'relative',
-            // Nötr açık zemin (theme.palette.neutralLighterAlt) + kartın kendi
-            // vurgu renginden hafif bir soluk (wash) — tekdüze beyaz yerine.
+            // Zaman dilimine göre hafif tonlanan zemin (ambientBase) + kartın
+            // kendi vurgu renginden bir soluk (wash) — tekdüze beyaz yerine.
             // İKİ DURAK DA OPAK (mixHex) — backdrop-filter desteklenmeyen
             // tarayıcılarda dahi kart HER ZAMAN aydınlık/okunaklı kalır.
-            background: `linear-gradient(165deg, ${mixHex(accent, theme.palette.neutralLighterAlt, 0.14)} 0%, ${theme.palette.neutralLighterAlt} 42%)`,
+            background: `linear-gradient(165deg, ${mixHex(accent, ambientBase, 0.14)} 0%, ${ambientBase} 42%)`,
             backdropFilter: 'blur(14px)',
             WebkitBackdropFilter: 'blur(14px)',
             border: 'none',
@@ -99,9 +117,11 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
             flexDirection: 'column',
             height: '100%',
             boxSizing: 'border-box',
-            transition: 'all 0.3s ease',
-            // transition zaten yukarıda 'all' — üst şerit/gölge rengi zaman
-            // dilimi değiştiğinde de (flairAccent) yumuşak geçiş yapar.
+            // Hover (transform/box-shadow) hızlı (0.3s), zaman dilimi
+            // geçişinde değişen background ise diğer bileşenlerle (WelcomeHeader
+            // vb.) aynı yumuşak 1.5s hızında — aksi halde renk sıçraması sert
+            // görünürdü.
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease, background 1.5s ease',
             selectors: {
                 '::before': {
                     content: '""',
