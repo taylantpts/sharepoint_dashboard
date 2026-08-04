@@ -50,10 +50,13 @@ const avatarGlow = keyframes({
     '50%': { boxShadow: '0 0 0 6px rgba(52,199,89,0.12), 0 4px 14px rgba(15,23,42,0.10)' }
 });
 
-// Işıltı (sparkle) süslemeleri için yumuşak bir titreşim.
-const sparkleTwinkle = keyframes({
-    '0%, 100%': { opacity: 0.25, transform: 'scale(0.85)' },
-    '50%': { opacity: 0.85, transform: 'scale(1.1)' }
+// İsmin altında sayfa yüklendiğinde soldan sağa "çizilen" ince aksan çizgisi
+// — yıldız/ışıltı süslemelerinin (kullanıcı geri bildirimiyle kaldırıldı)
+// yerini alan, daha sade/kurumsal ama hâlâ dikkat çekici bir "reveal" detayı.
+// Bir kerelik oynar (bkz. greetingName'deki animationIterationCount: 1).
+const growUnderline = keyframes({
+    '0%': { transform: 'scaleX(0)', opacity: 0 },
+    '100%': { transform: 'scaleX(1)', opacity: 1 }
 });
 
 // Avatarın arkasında yavaşça büyüyüp küçülen, zaman dilimi rengindeki bulanık
@@ -300,51 +303,6 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             boxShadow: '0 0 6px rgba(46,204,113,0.6)',
             zIndex: 1
         },
-        // Selamlama metninin etrafında dikkat çeken, ama abartısız iki süsleme
-        // detayı — rengi VE karakteri zaman dilimine göre değişir (sabah altın
-        // ışıltı ✦, öğlen sıcak parıltı ✴, akşam soğuk gümüş yıldız ✧) — bkz.
-        // themeManager.ts → header.decorationChar/decorationColor. zIndex
-        // glassLayer'ın (2) ÜSTÜNDE — aksi halde (önceki hata: zIndex:1) buzlu
-        // cam panelinin ARKASINDA kalıp fiilen görünmez oluyordu.
-        sparkle: {
-            position: 'absolute',
-            color: 'var(--yorpas-theme-header-decoration, #F0A868)',
-            pointerEvents: 'none',
-            zIndex: 3,
-            transition: 'color 1.5s ease',
-            animationName: sparkleTwinkle,
-            animationTimingFunction: 'ease-in-out',
-            animationIterationCount: 'infinite'
-        },
-        sparkleOne: {
-            top: 22,
-            left: '48%',
-            fontSize: 15,
-            animationDuration: '3.4s'
-        },
-        sparkleTwo: {
-            bottom: 26,
-            right: '18%',
-            fontSize: 11,
-            animationDuration: '2.6s',
-            animationDelay: '0.6s'
-        },
-        // İki ek ışıltı — header'a daha "canlı"/dikkat çekici bir his katmak
-        // için (toplam 4), her biri farklı boyut/konum/zamanlamayla.
-        sparkleThree: {
-            top: 46,
-            right: '30%',
-            fontSize: 9,
-            animationDuration: '4.1s',
-            animationDelay: '1.1s'
-        },
-        sparkleFour: {
-            bottom: 40,
-            left: '38%',
-            fontSize: 13,
-            animationDuration: '3.1s',
-            animationDelay: '1.7s'
-        },
         // Header'ın alt kenarındaki ince degrade çizgi — o anki zaman dilimi
         // paletinden (mesh-1/3/5) beslenir, WidgetCard'ların üst aksan
         // çizgisiyle aynı görsel dili header'a da taşır.
@@ -396,10 +354,31 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             letterSpacing: 0.1
         },
         greetingName: {
+            position: 'relative',
+            display: 'inline-block',
             fontWeight: 800,
             color: 'var(--yorpas-theme-header-name, #0F172A)',
             marginLeft: 8,
-            transition: 'color 1.5s ease'
+            transition: 'color 1.5s ease',
+            selectors: {
+                '::after': {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: -4,
+                    height: 3,
+                    borderRadius: 2,
+                    background: 'var(--yorpas-theme-header-decoration, #0078D4)',
+                    transformOrigin: 'left center',
+                    animationName: growUnderline,
+                    animationDuration: '0.7s',
+                    animationDelay: '0.5s',
+                    animationTimingFunction: 'ease-out',
+                    animationFillMode: 'both',
+                    animationIterationCount: 1
+                }
+            }
         },
         // Eğik ve hafifçe yukarıda duran el sallama emojisi (statik konum bu
         // transform'da, sallanma hareketi wave animasyonundan gelir). marginLeft
@@ -474,10 +453,6 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             <span className={styles.meshLayer} />
             <span className={styles.shimmerLayer} />
             <span className={styles.glassLayer} />
-            <span className={[styles.sparkle, styles.sparkleOne].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
-            <span className={[styles.sparkle, styles.sparkleTwo].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
-            <span className={[styles.sparkle, styles.sparkleThree].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
-            <span className={[styles.sparkle, styles.sparkleFour].join(' ')} aria-hidden="true">{headerVariant.decorationChar}</span>
             <span className={styles.bottomAccent} aria-hidden="true" />
             <div className={styles.content}>
                 <div className={styles.mainRow}>

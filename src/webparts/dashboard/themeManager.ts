@@ -14,8 +14,7 @@ export interface IHeaderVariant {
     dateText: string;
     /** Fluent ikon adı — selamlama etiketinin yanındaki ikon (saate göre değişir, RENK değişmez). */
     greetingIcon: string;
-    /** Süsleme (ışıltı) karakteri — saate göre değişir (RENK değişmez, bkz. decorationColor). */
-    decorationChar: string;
+    /** İsim altındaki "reveal" çizgisi ve avatar halosunun rengi — sabit kurumsal mavi. */
     decorationColor: string;
 }
 
@@ -35,9 +34,9 @@ export interface ITimeTheme {
 // tek bir vurgu rengi, widget'lara özel renk yok). Bu dosya artık zaman
 // dilimine göre HİÇBİR RENK değiştirmiyor — tek bir CORPORATE_PALETTE var.
 // Zaman dilimi (TimeBucket) sadece WelcomeHeader'daki selamlama METNİNİ
-// ("Günaydın" / "İyi günler" / "İyi akşamlar") ve yanındaki ikonu/süsleme
-// karakterini belirlemek için hâlâ kullanılıyor — bu salt kişiselleştirme
-// amaçlı bir metin/ikon seçimi, bir RENK teması değil.
+// ("Günaydın" / "İyi günler" / "İyi akşamlar") ve yanındaki ikonu belirlemek
+// için hâlâ kullanılıyor — bu salt kişiselleştirme amaçlı bir metin/ikon
+// seçimi, bir RENK teması değil.
 const CORPORATE_PALETTE = {
     // Çok hafif, neredeyse fark edilmeyen mavi-gri mesh — Velocity'nin
     // sade beyaz zeminine yakın, dikkat dağıtmayan bir doku.
@@ -61,10 +60,10 @@ const CORPORATE_PALETTE = {
     cardAmbient: '#EBF1FA'
 };
 
-const GREETING_BY_BUCKET: Record<TimeBucket, { label: string; greetingIcon: string; decorationChar: string }> = {
-    morning: { label: 'Sabah', greetingIcon: 'Sunny', decorationChar: '✦' },
-    day: { label: 'Öğlen', greetingIcon: 'Brightness', decorationChar: '✦' },
-    evening: { label: 'Akşam', greetingIcon: 'ClearNight', decorationChar: '✦' }
+const GREETING_BY_BUCKET: Record<TimeBucket, { label: string; greetingIcon: string }> = {
+    morning: { label: 'Sabah', greetingIcon: 'Sunny' },
+    day: { label: 'Öğlen', greetingIcon: 'Brightness' },
+    evening: { label: 'Akşam', greetingIcon: 'ClearNight' }
 };
 
 const buildTimeTheme = (bucket: TimeBucket): ITimeTheme => {
@@ -76,8 +75,7 @@ const buildTimeTheme = (bucket: TimeBucket): ITimeTheme => {
         pageBackground: CORPORATE_PALETTE.pageBackground,
         header: {
             ...CORPORATE_PALETTE.header,
-            greetingIcon: greeting.greetingIcon,
-            decorationChar: greeting.decorationChar
+            greetingIcon: greeting.greetingIcon
         },
         cardAmbient: CORPORATE_PALETTE.cardAmbient
     };
