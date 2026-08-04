@@ -255,6 +255,39 @@ const getListItems = async (context: WebPartContext, listTitle: string, top: num
 };
 
 /**
+ * Verilen listenin TÜM öğelerini, sayfalama (odata.nextLink) takip ederek
+ * çeker — tek istekte $top ile sınırlı KALMAZ. ÖNCEKİ HATA (Doğum Günleri
+ * widget'ı): getListItems'a sabit $top=500 veriliyordu; "Birthdays" listesi
+ * aslında 500'den FAZLA satır içeriyordu (ör. 859), SharePoint de tam olarak
+ * istenen 500'ü döndürüp gerisini sessizce görmezden geliyordu. Sonuç: ID'si
+ * ilk 500'ün dışında kalan kişiler — doğum günleri ay içinde/yaklaşan olsa
+ * bile — HİÇ ÇEKİLMİYORDU (filtre/sıralama sorunu değil, veri hiç gelmiyordu).
+ * Bu fonksiyon liste boyutundan bağımsız olarak HER satırı garanti eder.
+ */
+const getAllListItems = async (context: WebPartContext, listTitle: string): Promise<ISPListItem[]> => {
+    const webUrl = context.pageContext.web.absoluteUrl;
+    let endpoint: string | undefined =
+        `${webUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$top=2000`;
+    const all: ISPListItem[] = [];
+
+    while (endpoint) {
+        const response: SPHttpClientResponse = await context.spHttpClient.get(endpoint, SPHttpClient.configurations.v1);
+
+        if (!response.ok) {
+            const detail = await extractSPErrorDetail(response);
+            console.error(`[SharePointService] "${listTitle}" listesi okunamadı — istek: ${endpoint}`, detail);
+            throw new Error(`"${listTitle}" listesi okunamadı (${detail})`);
+        }
+
+        const body: { value: ISPListItem[]; 'odata.nextLink'?: string } = await response.json();
+        all.push(...(body.value ?? []));
+        endpoint = body['odata.nextLink'];
+    }
+
+    return all;
+};
+
+/**
  * Listenin GERÇEK sütun (alan) şemasını çeker — dahili ad tahminimiz tutmadığında
  * doğru sütunu tipe göre (ör. Tarih/Saat) otomatik bulabilmek için kullanılır.
  * İstek başarısız olursa (yetki vb.) sessizce boş dizi döner; bu fonksiyon asla
@@ -282,16 +315,11 @@ const getListFieldsMeta = async (context: WebPartContext, listTitle: string): Pr
 };
 
 /**
- * "Birthdays" listesinden BU AYIN TÜM doğum günlerini çeker. ÖNCEKİ HATA:
- * sadece "bugün ve sonrası" (day >= currentDay) filtreleniyordu — ayın
- * başındaki biri, ay ortasında bakıldığında listede HİÇ görünmüyordu ("veri
- * çekilmiyor" şikâyeti tam olarak buydu, aslında veri doğru çekiliyordu ama
- * bilerek eleniyordu). Artık ayın TÜMÜ listeleniyor; sıralama önce bugün ve
- * sonrası (yaklaşanlar, güne göre artan), ardından ayın zaten geçmiş günleri
- * (yine güne göre artan) — "yaklaşanlar öne" hissi korunuyor ama artık hiçbir
- * kayıt sessizce elenmiyor. Ay/gün karşılaştırması tamamen JS tarafında
- * yapılır (OData $filter tarih karşılaştırmasında sorun çıkardığı için
- * kullanılmaz).
+ * "Birthdays" listesinden bugünden itibaren (bugün dahil) bu ay içindeki
+ * YAKLAŞAN doğum günlerini çeker. Geçmiş günler KASITLI OLARAK listeye
+ * dahil edilmez (kullanıcı isteği). Ay/gün karşılaştırması tamamen JS
+ * tarafında yapılır (OData $filter tarih karşılaştırmasında sorun çıkardığı
+ * için kullanılmaz).
  *
  * KENDİ KENDİNİ ONARAN ALAN ALGILAMA: BIRTHDAY_NAME_FIELD / DATE_OF_BIRTH_FIELD
  * sabitleri gerçek liste öğesinde yoksa (dahili ad tahmini yanlışsa), listenin
@@ -300,7 +328,7 @@ const getListFieldsMeta = async (context: WebPartContext, listTitle: string): Pr
  * dahili ad uyuşmazlığı doğum günlerinin sessizce boş görünmesine yol açmaz.
  */
 export const getBirthdaysThisMonth = async (context: WebPartContext): Promise<IBirthdayItem[]> => {
-    const items = await getListItems(context, BIRTHDAYS_LIST_TITLE, 500);
+    const items = await getAllListItems(context, BIRTHDAYS_LIST_TITLE);
 
     let nameField = BIRTHDAY_NAME_FIELD;
     let dateField = DATE_OF_BIRTH_FIELD;
@@ -339,9 +367,9 @@ export const getBirthdaysThisMonth = async (context: WebPartContext): Promise<IB
             const parsed = raw ? getMonthDayFromIso(raw) : undefined;
             return { item, parsed };
         })
-        // Bu ayın TÜMÜ — geçmiş günler artık elenmiyor (bkz. üstteki not).
+        // Sadece bu ay VE bugün ya da sonrası — geçmiş günler listeye eklenmez.
         .filter((entry): entry is { item: ISPListItem; parsed: { month: number; day: number } } =>
-            !!entry.parsed && entry.parsed.month === currentMonth
+            !!entry.parsed && entry.parsed.month === currentMonth && entry.parsed.day >= currentDay
         )
         .map(({ item, parsed }) => ({
             id: item.Id,
@@ -351,13 +379,7 @@ export const getBirthdaysThisMonth = async (context: WebPartContext): Promise<IB
             isToday: parsed.day === currentDay,
             dateLabel: `${parsed.day} ${TURKISH_MONTH_NAMES[parsed.month]}`
         }))
-        // Önce yaklaşanlar (bugün dahil, güne göre artan), sonra ayın zaten
-        // geçmiş günleri (yine güne göre artan) — bkz. üstteki not.
-        .sort((a, b) => {
-            const rankA = a.day >= currentDay ? 0 : 1;
-            const rankB = b.day >= currentDay ? 0 : 1;
-            return rankA !== rankB ? rankA - rankB : a.day - b.day;
-        });
+        .sort((a, b) => a.day - b.day);
 };
 
 /**
