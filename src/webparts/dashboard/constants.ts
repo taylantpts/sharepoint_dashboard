@@ -5,10 +5,14 @@ export const DATA_UNAVAILABLE_MESSAGE = 'Veri şu an ulaşılamıyor. Lütfen da
 export const SUBMIT_UNAVAILABLE_MESSAGE = 'Şu an gönderilemiyor. Lütfen daha sonra tekrar deneyin.';
 
 /**
- * GEÇİCİ MOCK — Duyuru/Etkinlik ekleme butonlarının (+) kimlere görüneceğini
- * belirler. Şu an sabit `true`: yetki kontrolü henüz gerçek bir mekanizmaya
- * (ör. kullanıcının belirli bir SharePoint grubunda olup olmadığının
- * `_api/web/currentuser/groups` ile kontrolü) bağlanmadı — bu iş üretime
- * alınmadan önce yapılmalı, aksi halde bu butonlar TÜM kullanıcılara görünür.
+ * Duyuru/Etkinlik ekleme yetkisi olan SharePoint grubunun adı. Site İzinleri >
+ * Gelişmiş İzin Ayarları'ndan oluşturulmuş gerçek gruptur; Duyurular ve
+ * Etkinlikler listelerinde bu gruba Katılım (Contribute) izni verilmiştir.
  */
-export const IS_ADMIN_MOCK = true;
+export const HR_ADMIN_GROUP_NAME = 'İK ve İdari İşler Personeli';
+
+/**
+ * İSG Takvimi yükleme yetkisi olan SharePoint grubunun adı. ISGTakvimi
+ * klasöründe bu gruba Katılım (Contribute) izni verilmiştir.
+ */
+export const ISG_GROUP_NAME = 'İSG Personeli';

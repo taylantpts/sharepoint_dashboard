@@ -7,8 +7,9 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import WidgetCard from '../WidgetCard';
 import DetailModal from '../DetailModal';
 import { getAnnouncements, createAnnouncement, IAnnouncementItem } from '../../services/SharePointService';
-import { DATA_UNAVAILABLE_MESSAGE, IS_ADMIN_MOCK } from '../../constants';
+import { DATA_UNAVAILABLE_MESSAGE } from '../../constants';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export interface IAnnouncementsFeedProps {
     context: WebPartContext;
@@ -50,6 +51,7 @@ const inputFieldStyles: Partial<ITextFieldStyles> = {
 };
 
 const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (props) => {
+    const { canManageAnnouncements } = usePermissions(props.context);
     const { context } = props;
     const theme = useTheme();
 
@@ -362,7 +364,7 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
             subtitle="Şirket içi güncel haber akışı"
             iconName="News"
             accentColor="#c17b4f"
-            headerAction={IS_ADMIN_MOCK && (
+            headerAction={canManageAnnouncements && (
                 <IconButton
                     iconProps={{ iconName: 'Add' }}
                     ariaLabel="Yeni duyuru ekle"

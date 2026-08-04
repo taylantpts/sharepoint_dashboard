@@ -7,7 +7,8 @@ import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import WidgetCard from '../WidgetCard';
 import DetailModal from '../DetailModal';
-import { DATA_UNAVAILABLE_MESSAGE, SUBMIT_UNAVAILABLE_MESSAGE, IS_ADMIN_MOCK } from '../../constants';
+import { DATA_UNAVAILABLE_MESSAGE, SUBMIT_UNAVAILABLE_MESSAGE } from '../../constants';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export interface IISGCalendarWidgetProps {
     context: WebPartContext;
@@ -53,6 +54,7 @@ const extractErrorDetail = async (response: SPHttpClientResponse): Promise<strin
 };
 
 const ISGCalendarWidget: React.FunctionComponent<IISGCalendarWidgetProps> = ({ context }) => {
+    const { canManageISGCalendar } = usePermissions(context);
     const theme = useTheme();
     const [state, setState] = React.useState<LoadState>('loading');
     const [file, setFile] = React.useState<ICalendarFile | undefined>(undefined);
@@ -360,7 +362,7 @@ const ISGCalendarWidget: React.FunctionComponent<IISGCalendarWidgetProps> = ({ c
             subtitle="Güncel iş sağlığı ve güvenliği takvimi"
             iconName="Shield"
             accentColor="#c9635c"
-            headerAction={IS_ADMIN_MOCK && (
+            headerAction={canManageISGCalendar && (
                 <IconButton
                     iconProps={{ iconName: 'Add' }}
                     ariaLabel="Yeni takvim yükle"

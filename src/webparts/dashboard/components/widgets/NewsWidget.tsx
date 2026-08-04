@@ -3,19 +3,51 @@ import { Icon, Spinner, SpinnerSize, MessageBar, MessageBarType, useTheme, merge
 import WidgetCard from '../WidgetCard';
 import { DATA_UNAVAILABLE_MESSAGE } from '../../constants';
 
-// Kaynak RSS akışı — kod değiştirmeden başka bir haber kaynağına geçmek için
-// sadece bu satırı güncellemek yeterli. rss2json.com anahtarsız/ücretsiz
-// katmanı (günlük istek sınırı var) RSS'i tarayıcıdan CORS ile okunabilir
-// JSON'a çeviriyor; trafik arttığında rss2json'da ücretli bir plana/kendi
-// anahtarınıza geçmeniz gerekebilir.
-// ÖNCEKİ HATA: "gundem" (genel gündem) akışı zaman zaman siyasi/parti içerikli
-// başlıklar da içeriyordu — kurumsal bir intranet için istenmeyen bir durum.
-// Aynı güvenilir kaynağın (NTV) SADECE "Yaşam" kategorisine geçildi: bu akış
-// tamamen gündelik/magazin/insan hikâyesi ağırlıklı, siyasetten bağımsız.
-const NEWS_RSS_FEED_URL = 'https://www.ntv.com.tr/yasam.rss';
-const RSS2JSON_ENDPOINT = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(NEWS_RSS_FEED_URL)}`;
+// Kaynak RSS akışları — kod değiştirmeden başka/ek bir haber kaynağına geçmek
+// için sadece bu listeyi güncellemek yeterli. rss2json.com anahtarsız/ücretsiz
+// katmanı (günlük istek sınırı var — burada widget başına N istek yapıldığı
+// için limit tek akışa göre N kat daha hızlı dolar) RSS'i tarayıcıdan CORS ile
+// okunabilir JSON'a çeviriyor; trafik arttığında rss2json'da ücretli bir
+// plana/kendi anahtarınıza geçmeniz gerekebilir.
+// ÖNCEKİ HATA (v1): "gundem" (genel gündem) akışı zaman zaman siyasi/parti
+// içerikli başlıklar da içeriyordu.
+// ÖNCEKİ HATA (v2): tek başına "Yaşam" kategorisine geçildi — siyasetten
+// bağımsızdı ama tamamen magazin/insan hikâyesi ağırlıklıydı, "kaliteli/genel
+// haber" beklentisini karşılamıyordu.
+// v3: Aynı güvenilir kaynağın (NTV) SİYASİ RİSKİ DÜŞÜK, ciddi/genel birden
+// fazla kategorisi birleştiriliyor (Ekonomi, Teknoloji, Sağlık, Eğitim,
+// Yaşam). "Gündem", "Türkiye" ve "Dünya" kategorileri BİLİNÇLİ OLARAK dışarıda
+// bırakıldı — bunlar hükümet/parti/seçim/dış politika haberlerinin en yoğun
+// olduğu kategoriler. Ek bir güvenlik katmanı olarak POLITICAL_KEYWORDS ile
+// başlık bazlı bir filtre de uygulanıyor (ör. ekonomi haberinde bir bakanın
+// adının geçmesi gibi sızıntıları yakalamak için).
+const NEWS_CATEGORIES: ReadonlyArray<{ url: string; label: string }> = [
+    { url: 'https://www.ntv.com.tr/ekonomi.rss', label: 'Ekonomi' },
+    { url: 'https://www.ntv.com.tr/teknoloji.rss', label: 'Teknoloji' },
+    { url: 'https://www.ntv.com.tr/saglik.rss', label: 'Sağlık' },
+    { url: 'https://www.ntv.com.tr/egitim.rss', label: 'Eğitim' },
+    { url: 'https://www.ntv.com.tr/yasam.rss', label: 'Yaşam' }
+];
 
-const MAX_ITEMS = 5;
+const rss2JsonEndpoint = (rssUrl: string): string =>
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+// Kategori seçimi siyasi içeriği büyük ölçüde eliyor, ama bu son bir güvenlik
+// ağı: "ciddi" kategorilerde (ör. Ekonomi) bile ara sıra bir bakan/parti
+// açıklamasına atıf geçebiliyor — böyle başlıklar listeye hiç girmesin diye
+// başlık metninde bu kelimelerden biri geçen haberler baştan eleniyor.
+const POLITICAL_KEYWORDS: ReadonlyArray<string> = [
+    'cumhurbaşkan', 'başbakan', 'bakan', 'meclis', 'parti', 'seçim',
+    'milletvekili', 'vekil', 'ittifak', 'muhalefet', 'iktidar', 'siyaset',
+    'siyasi', 'chp', 'akp', 'mhp', 'iyi parti', 'dem parti'
+];
+
+const containsPoliticalKeyword = (title: string): boolean => {
+    const normalized = title.toLocaleLowerCase('tr-TR');
+    return POLITICAL_KEYWORDS.some((keyword) => normalized.indexOf(keyword) !== -1);
+};
+
+const MAX_ITEMS = 6;
 
 interface IRss2JsonItem {
     title: string;
@@ -35,6 +67,8 @@ interface INewsItem {
     link: string;
     dateLabel: string;
     thumbnail?: string;
+    category: string;
+    pubDate: string;
 }
 
 type LoadState = 'loading' | 'loaded' | 'error';
@@ -49,32 +83,49 @@ const NewsWidget: React.FunctionComponent = () => {
     React.useEffect(() => {
         let isMounted = true;
 
-        const load = async (): Promise<void> => {
+        // Promise.allSettled bu projenin TS lib hedefinde yok — aynı "bir
+        // kategori başarısız olsa da diğerleri listeyi doldursun" davranışını
+        // her fetch'i kendi içinde yakalayıp hatada boş dizi döndürerek elde
+        // ediyoruz; Promise.all bu durumda asla reject olmaz.
+        const fetchCategory = async (category: { url: string; label: string }): Promise<INewsItem[]> => {
             try {
-                const response = await fetch(RSS2JSON_ENDPOINT);
+                const response = await fetch(rss2JsonEndpoint(category.url));
                 if (!response.ok) {
-                    throw new Error(`rss2json isteği başarısız (HTTP ${response.status})`);
+                    throw new Error(`rss2json isteği başarısız (${category.label}, HTTP ${response.status})`);
                 }
                 const data: IRss2JsonResponse = await response.json();
                 if (data.status !== 'ok') {
-                    throw new Error(`rss2json beklenmeyen durum döndürdü: ${data.status}`);
+                    throw new Error(`rss2json beklenmeyen durum döndürdü (${category.label}): ${data.status}`);
                 }
 
-                const items: INewsItem[] = data.items.slice(0, MAX_ITEMS).map((item) => ({
-                    title: stripHtml(item.title),
-                    link: item.link,
-                    dateLabel: new Date(item.pubDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
-                    thumbnail: item.thumbnail || undefined
-                }));
-
-                if (isMounted) {
-                    setNews(items);
-                    setState('loaded');
-                }
+                return data.items
+                    .filter((item) => !containsPoliticalKeyword(item.title))
+                    .map((item) => ({
+                        title: stripHtml(item.title),
+                        link: item.link,
+                        dateLabel: new Date(item.pubDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
+                        thumbnail: item.thumbnail || undefined,
+                        category: category.label,
+                        pubDate: item.pubDate
+                    }));
             } catch (error) {
-                console.error('[NewsWidget] Haberler alınamadı:', error);
-                if (isMounted) {
+                console.error('[NewsWidget] Kategori alınamadı:', category.label, error);
+                return [];
+            }
+        };
+
+        const load = async (): Promise<void> => {
+            const perCategory = await Promise.all(NEWS_CATEGORIES.map(fetchCategory));
+            const merged = perCategory.reduce<INewsItem[]>((all, items) => all.concat(items), []);
+
+            merged.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+
+            if (isMounted) {
+                if (merged.length === 0) {
                     setState('error');
+                } else {
+                    setNews(merged.slice(0, MAX_ITEMS));
+                    setState('loaded');
                 }
             }
         };
@@ -147,7 +198,7 @@ const NewsWidget: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="Haberler" subtitle="Gündemden önemli başlıklar" iconName="News" accentColor="#3f6fb0">
+        <WidgetCard title="Haberler" subtitle="Ekonomi, teknoloji, sağlık ve daha fazlası" iconName="News" accentColor="#3f6fb0">
             {state === 'loading' && <Spinner size={SpinnerSize.medium} label="Haberler yükleniyor..." />}
             {state === 'error' && <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>}
             {state === 'loaded' && (
@@ -163,7 +214,7 @@ const NewsWidget: React.FunctionComponent = () => {
                             </div>
                             <div className={styles.detailGroup}>
                                 <div className={styles.title}>{item.title}</div>
-                                <div className={styles.date}>{item.dateLabel}</div>
+                                <div className={styles.date}>{item.category} · {item.dateLabel}</div>
                             </div>
                         </a>
                     ))}

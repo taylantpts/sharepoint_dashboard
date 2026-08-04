@@ -7,7 +7,8 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import WidgetCard from '../WidgetCard';
 import DetailModal from '../DetailModal';
 import { getUpcomingEvents, createEvent, IUpcomingEventItem } from '../../services/SharePointService';
-import { DATA_UNAVAILABLE_MESSAGE, IS_ADMIN_MOCK } from '../../constants';
+import { DATA_UNAVAILABLE_MESSAGE } from '../../constants';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export interface IUpcomingEventsProps {
     context: WebPartContext;
@@ -61,6 +62,7 @@ const topLevelFieldStyles: Partial<ITextFieldStyles> = {
 };
 
 const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) => {
+    const { canManageAnnouncements } = usePermissions(props.context);
     const { context } = props;
     const theme = useTheme();
 
@@ -416,7 +418,7 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
             subtitle="Şirket etkinlik takvimi"
             iconName="Calendar"
             accentColor="#9a8bc7"
-            headerAction={IS_ADMIN_MOCK && (
+            headerAction={canManageAnnouncements && (
                 <IconButton
                     iconProps={{ iconName: 'Add' }}
                     ariaLabel="Yeni etkinlik ekle"
