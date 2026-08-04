@@ -75,10 +75,37 @@ type LoadState = 'loading' | 'loaded' | 'error';
 
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
+// RSS başlıkları HTML-kodlanmış karakterler taşıyabilir (ör. tırnak için
+// "&quot;", kesme işareti için "&#39;") — bunlar sade metin olarak render
+// edildiği için (dangerouslySetInnerHTML KULLANILMIYOR) React'in kendisi
+// bunları asla çözmez, ekranda literal "&quot;" yazar. <textarea>.innerHTML
+// bu kodlamayı ÇÖZER ama İÇİNE KONAN İÇERİĞİ ASLA HTML OLARAK ÇALIŞTIRMAZ
+// (textarea'nın içeriği her zaman düz metin muamelesi görür) — bu yüzden
+// DOMParser/innerHTML'in aksine XSS riski taşımadan güvenle kullanılabilir.
+const decodeHtmlEntities = (text: string): string => {
+    const el = document.createElement('textarea');
+    el.innerHTML = text;
+    return el.value;
+};
+
+// rss2json her haberde "thumbnail" alanını doldurmuyor (RSS'te <enclosure>/
+// <media:thumbnail> yoksa boş geliyor) — bu durumda haberin HTML açıklaması
+// (description) içine gömülü ilk <img>'in src'si son çare olarak kullanılıyor.
+const extractFirstImageUrl = (html?: string): string | undefined => {
+    if (!html) {
+        return undefined;
+    }
+    const match = /<img[^>]+src=["']([^"']+)["']/i.exec(html);
+    return match ? match[1] : undefined;
+};
+
 const NewsWidget: React.FunctionComponent = () => {
     const theme = useTheme();
     const [state, setState] = React.useState<LoadState>('loading');
     const [news, setNews] = React.useState<INewsItem[]>([]);
+    // Bazı thumbnail URL'leri (kırık kaynak/404) tarayıcıda hiç yüklenmeyebilir
+    // — bu durumda kırık resim ikonu yerine yer tutucu ikona düşülür.
+    const [brokenThumbs, setBrokenThumbs] = React.useState<Set<string>>(new Set());
 
     React.useEffect(() => {
         let isMounted = true;
@@ -101,10 +128,10 @@ const NewsWidget: React.FunctionComponent = () => {
                 return data.items
                     .filter((item) => !containsPoliticalKeyword(item.title))
                     .map((item) => ({
-                        title: stripHtml(item.title),
+                        title: decodeHtmlEntities(stripHtml(item.title)),
                         link: item.link,
                         dateLabel: new Date(item.pubDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
-                        thumbnail: item.thumbnail || undefined,
+                        thumbnail: item.thumbnail || extractFirstImageUrl(item.description) || undefined,
                         category: category.label,
                         pubDate: item.pubDate
                     }));
@@ -206,8 +233,16 @@ const NewsWidget: React.FunctionComponent = () => {
                     {news.map((item) => (
                         <a key={item.link} href={item.link} target="_blank" rel="noopener noreferrer" className={styles.row}>
                             <div className={styles.thumbWrap}>
-                                {item.thumbnail ? (
-                                    <img src={item.thumbnail} alt="" className={styles.thumbImg} />
+                                {item.thumbnail && !brokenThumbs.has(item.thumbnail) ? (
+                                    <img
+                                        src={item.thumbnail}
+                                        alt=""
+                                        className={styles.thumbImg}
+                                        onError={() => {
+                                            const url = item.thumbnail as string;
+                                            setBrokenThumbs((prev) => (prev.has(url) ? prev : new Set(prev).add(url)));
+                                        }}
+                                    />
                                 ) : (
                                     <Icon iconName="News" className={styles.placeholderIcon} />
                                 )}
