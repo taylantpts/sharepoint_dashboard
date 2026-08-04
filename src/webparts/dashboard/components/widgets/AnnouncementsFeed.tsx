@@ -48,7 +48,14 @@ const inputFieldStyles: Partial<ITextFieldStyles> = {
             ':after': { borderRadius: 12, border: '2px solid #3B82F6', boxShadow: '0 0 0 4px rgba(59,130,246,0.15)' }
         }
     },
-    field: { padding: '12px 16px', fontSize: 14 }
+    field: { padding: '12px 16px', fontSize: 14 },
+    // ÖNCEKİ HATA: etiket (ör. "Duyuru Başlığı") ile altındaki kutu arasında
+    // hiç boşluk YOKTU — Label'ın varsayılan alt boşluğu kutunun artık
+    // belirgin bir kenarlığı/gölgesi olmasıyla (bkz. fieldGroup) görsel
+    // olarak yetersiz kalıp ikisi iç içe geçmiş gibi görünüyordu.
+    subComponentStyles: {
+        label: { root: { marginBottom: 8 } }
+    }
 };
 
 const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (props) => {

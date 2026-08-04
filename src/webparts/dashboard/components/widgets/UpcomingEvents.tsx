@@ -49,7 +49,12 @@ const inputFieldStyles: Partial<ITextFieldStyles> = {
             ':after': { borderRadius: 12, border: '2px solid #3B82F6', boxShadow: '0 0 0 4px rgba(59,130,246,0.15)' }
         }
     },
-    field: { padding: '12px 16px', fontSize: 14 }
+    field: { padding: '12px 16px', fontSize: 14 },
+    // ÖNCEKİ HATA: etiket (ör. "Etkinlik Başlığı") ile altındaki kutu
+    // arasında hiç boşluk YOKTU — bkz. AnnouncementsFeed.tsx'teki aynı not.
+    subComponentStyles: {
+        label: { root: { marginBottom: 8 } }
+    }
 };
 
 // formContainer'ın DOĞRUDAN çocuğu olan TextField'lar (Etkinlik Başlığı/
@@ -343,7 +348,7 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
             fontSize: 14,
             fontWeight: 600,
             color: '#323130',
-            marginBottom: 5,
+            marginBottom: 8,
             display: 'block'
         },
         // Fluent'in temel paketinde bir TimePicker bileşeni yok — ek bir
