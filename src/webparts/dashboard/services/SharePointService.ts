@@ -282,11 +282,16 @@ const getListFieldsMeta = async (context: WebPartContext, listTitle: string): Pr
 };
 
 /**
- * "Birthdays" listesinden bugünden itibaren (bugün dahil) bu ay içindeki
- * YAKLAŞAN doğum günlerini, güne göre artan sırada çeker. Geçmiş günler
- * bilinçli olarak listeye dahil edilmez. Ay/gün karşılaştırması tamamen JS
- * tarafında yapılır (OData $filter tarih karşılaştırmasında sorun çıkardığı
- * için kullanılmaz).
+ * "Birthdays" listesinden BU AYIN TÜM doğum günlerini çeker. ÖNCEKİ HATA:
+ * sadece "bugün ve sonrası" (day >= currentDay) filtreleniyordu — ayın
+ * başındaki biri, ay ortasında bakıldığında listede HİÇ görünmüyordu ("veri
+ * çekilmiyor" şikâyeti tam olarak buydu, aslında veri doğru çekiliyordu ama
+ * bilerek eleniyordu). Artık ayın TÜMÜ listeleniyor; sıralama önce bugün ve
+ * sonrası (yaklaşanlar, güne göre artan), ardından ayın zaten geçmiş günleri
+ * (yine güne göre artan) — "yaklaşanlar öne" hissi korunuyor ama artık hiçbir
+ * kayıt sessizce elenmiyor. Ay/gün karşılaştırması tamamen JS tarafında
+ * yapılır (OData $filter tarih karşılaştırmasında sorun çıkardığı için
+ * kullanılmaz).
  *
  * KENDİ KENDİNİ ONARAN ALAN ALGILAMA: BIRTHDAY_NAME_FIELD / DATE_OF_BIRTH_FIELD
  * sabitleri gerçek liste öğesinde yoksa (dahili ad tahmini yanlışsa), listenin
@@ -334,9 +339,9 @@ export const getBirthdaysThisMonth = async (context: WebPartContext): Promise<IB
             const parsed = raw ? getMonthDayFromIso(raw) : undefined;
             return { item, parsed };
         })
-        // Sadece bu ay VE bugün ya da sonrası — geçmiş günler listeye eklenmez.
+        // Bu ayın TÜMÜ — geçmiş günler artık elenmiyor (bkz. üstteki not).
         .filter((entry): entry is { item: ISPListItem; parsed: { month: number; day: number } } =>
-            !!entry.parsed && entry.parsed.month === currentMonth && entry.parsed.day >= currentDay
+            !!entry.parsed && entry.parsed.month === currentMonth
         )
         .map(({ item, parsed }) => ({
             id: item.Id,
@@ -346,7 +351,13 @@ export const getBirthdaysThisMonth = async (context: WebPartContext): Promise<IB
             isToday: parsed.day === currentDay,
             dateLabel: `${parsed.day} ${TURKISH_MONTH_NAMES[parsed.month]}`
         }))
-        .sort((a, b) => a.day - b.day);
+        // Önce yaklaşanlar (bugün dahil, güne göre artan), sonra ayın zaten
+        // geçmiş günleri (yine güne göre artan) — bkz. üstteki not.
+        .sort((a, b) => {
+            const rankA = a.day >= currentDay ? 0 : 1;
+            const rankB = b.day >= currentDay ? 0 : 1;
+            return rankA !== rankB ? rankA - rankB : a.day - b.day;
+        });
 };
 
 /**
