@@ -30,6 +30,19 @@ export interface ITimeTheme {
     pageBackground: [string, string, string];
     /** Karşılama header'ının zaman dilimine göre TAMAMEN farklı kimliği (renk + ikon + süsleme). */
     header: IHeaderVariant;
+    /**
+     * Widget KARTLARININ zemin tonu — header'ın decorationColor'ından (o,
+     * sadece küçük ışıltı glyph'i içindir) BİLİNÇLİ OLARAK AYRI bir alan.
+     * ÖNCEKİ HATA: WidgetCard.tsx kartların zeminini de decorationColor ile
+     * boyuyordu; bu renk header'daki ışıltı için seçilmişti (sabah/öğlen
+     * ikisi de sıcak altın/turuncu ailesindeydi) ve kartlara uygulanınca
+     * "kirli/tekdüze sarı" bir izlenim veriyordu. cardAmbient, sayfanın
+     * KENDİ mesh/zemin paletinden (meshColors/pageBackground ile aynı aile)
+     * türetilir — böylece kart zemini, o zaman diliminin sayfa kimliğiyle
+     * (sabah=berrak mavi, öğlen=krem, akşam=gece mavisi) GERÇEKTEN tutarlı
+     * olur, ayrı/rastgele bir ton değil.
+     */
+    cardAmbient: string;
 }
 
 /**
@@ -64,7 +77,10 @@ const THEMES: Record<TimeBucket, ITimeTheme> = {
             greetingIcon: 'Sunny',
             decorationChar: '✦',
             decorationColor: '#F0A868'
-        }
+        },
+        // Berrak gök mavisi — meshColors'taki mavi duraklarla (#D6E7FA/#B7D6F3)
+        // aynı aile, sayfa zeminiyle dokusu birebir örtüşen bir kart tonu.
+        cardAmbient: '#D9EAFB'
     },
     day: {
         label: 'Relax Afternoon',
@@ -94,7 +110,11 @@ const THEMES: Record<TimeBucket, ITimeTheme> = {
             // aile: doygun, kırmızıya yakın bir "kavrulmuş turuncu/toprak"
             // (terracotta) — sabahın soluk altınından belirgin şekilde ayrışır.
             decorationColor: '#C1652E'
-        }
+        },
+        // Sıcak krem/altın — meshColors'taki #F7E2C2/#F0D6A8 duraklarıyla aynı
+        // aile; sabahın soğuk mavisinden BARİZ şekilde ayrışan, güneşli bir
+        // öğlen molası hissi.
+        cardAmbient: '#F5E2BE'
     },
     evening: {
         label: 'Evening Corporate',
@@ -118,7 +138,16 @@ const THEMES: Record<TimeBucket, ITimeTheme> = {
             greetingIcon: 'ClearNight',
             decorationChar: '✧',
             decorationColor: '#9FBEE6'
-        }
+        },
+        // Yumuşak "gece laciverti" — sayfanın koyu zemininin (pageBackground)
+        // AÇIK/okunaklı bir yansıması. Kartlar bilinçli olarak koyulaştırılmıyor
+        // (kullanıcı geri bildirimiyle tam koyu widget teması daha önce geri
+        // alınmıştı) ama bu soğuk mavi-gri ton, akşamın "gece mavisi"
+        // kimliğini sabah/öğlenin sıcak tonlarından bariz şekilde ayırıyor.
+        // ÖNEMLİ: sabahın #D9EAFB'sinden (berrak/açık gök mavisi) BİLİNÇLİ
+        // OLARAK daha DOYGUN ve GRİMSİ (#C4D2EA) — aksi halde ikisi de "açık
+        // mavi" olup göz kararında ayırt edilemiyordu.
+        cardAmbient: '#C4D2EA'
     }
 };
 

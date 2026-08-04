@@ -74,22 +74,23 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
     const theme = useTheme();
     const accent = accentColor ?? theme.palette.themePrimary;
 
-    // ÖNCEKİ HATA: flairAccent (ikon rozeti + üst şerit) mevsim rengiyle %60
-    // ağırlıkla harmanlanıyordu — yani her widget'ın KENDİ kimlik renginden
-    // (accent, ör. Duyurular turuncu, Etkinlikler mor) DAHA BASKINDI. Sabah
-    // ve öğlen mevsim rengi ikisi de sıcak/altın tondaydı, bu yüzden TÜM
-    // widget'ların rozeti — kendi rengi ne olursa olsun — aynı "tuhaf sarı"ya
-    // çekiliyordu; 18 widget'ın özenle seçilmiş 18 farklı accentColor'ı
-    // (bkz. Dashboard.tsx) görünürde kayboluyordu. Artık ağırlık tersine
-    // çevrildi: mevsim rengi sadece İNCE bir "parıltı" (%18) katıyor, widget'ın
-    // kendi kimliği (%82) her zaman baskın ve ayırt edilebilir kalıyor.
-    // ambientBase (kartın zemin degradesinin ilk durağı) ise hâlâ hafif
-    // (%10) ama artık üç zaman diliminde de belirgin şekilde farklı bir
-    // "ambiyans" hissi versin diye biraz güçlendirildi.
+    // ÖNCEKİ HATA #1: flairAccent (ikon rozeti + üst şerit) mevsim rengiyle
+    // %60 ağırlıkla harmanlanıyordu — widget'ın KENDİ kimlik renginden (accent,
+    // ör. Duyurular turuncu, Etkinlikler mor) DAHA BASKINDI; 18 widget'ın özenle
+    // seçilmiş 18 farklı accentColor'ı (bkz. Dashboard.tsx) görünürde
+    // kayboluyordu. Artık widget kimliği (%80-82) her zaman baskın, mevsim
+    // sadece ince bir parıltı katıyor.
+    // ÖNCEKİ HATA #2 (asıl "çok kötü arkaplan" şikayeti): kart zemini
+    // (ambientBase), header'ın decorationColor'ı (küçük ışıltı glyph'i için
+    // seçilmiş bir renk) ile boyanıyordu — bu, sayfanın kendi mesh/zemin
+    // paletiyle (meshColors/pageBackground) HİÇ ilgisi olmayan, rastgele bir
+    // ton veriyordu. Artık cardAmbient (themeManager.ts) kullanılıyor — bu,
+    // her zaman diliminin SAYFA kimliğinden (sabah=berrak mavi, öğlen=krem,
+    // akşam=gece mavisi) türetilmiş, tutarlı bir kart tonu.
     const timeBucket = useTimeAwareTheme();
-    const headerVariant = getTimeTheme(timeBucket).header;
-    const flairAccent = mixHex(headerVariant.decorationColor, accent, 0.18);
-    const ambientBase = mixHex(headerVariant.decorationColor, theme.palette.neutralLighterAlt, 0.10);
+    const timeTheme = getTimeTheme(timeBucket);
+    const flairAccent = mixHex(timeTheme.cardAmbient, accent, 0.2);
+    const ambientBase = mixHex(timeTheme.cardAmbient, theme.palette.neutralLighterAlt, 0.28);
 
     const styles = mergeStyleSets({
         card: {
