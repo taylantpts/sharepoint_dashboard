@@ -1,12 +1,13 @@
 import * as React from 'react';
 import {
     Icon, Spinner, SpinnerSize, MessageBar, MessageBarType, Text, IconButton, TextField, PrimaryButton,
+    DefaultButton, Dialog, DialogType, DialogFooter,
     useTheme, mergeStyleSets, ITextFieldStyles
 } from '@fluentui/react';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import WidgetCard from '../WidgetCard';
 import DetailModal from '../DetailModal';
-import { getAnnouncements, createAnnouncement, IAnnouncementItem } from '../../services/SharePointService';
+import { getAnnouncements, createAnnouncement, deleteAnnouncement, IAnnouncementItem } from '../../services/SharePointService';
 import { DATA_UNAVAILABLE_MESSAGE } from '../../constants';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -66,6 +67,23 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
     const [newImage, setNewImage] = React.useState<File | undefined>(undefined);
     const [submitState, setSubmitState] = React.useState<SubmitState>('idle');
     const [submitError, setSubmitError] = React.useState<string | undefined>(undefined);
+
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
+    const [deleteState, setDeleteState] = React.useState<SubmitState>('idle');
+
+    // Seçilen görsel için canlı bir önizleme (dosya adı yerine) — obje URL'i
+    // sadece bu bileşenin belleğinde yaşar, seçim değişince/kapanınca
+    // (temizleme fonksiyonu) serbest bırakılır, bellek sızıntısı olmaz.
+    const [newImagePreviewUrl, setNewImagePreviewUrl] = React.useState<string | undefined>(undefined);
+    React.useEffect(() => {
+        if (!newImage) {
+            setNewImagePreviewUrl(undefined);
+            return;
+        }
+        const url = URL.createObjectURL(newImage);
+        setNewImagePreviewUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [newImage]);
 
     const loadAnnouncements = React.useCallback((onlyIfMounted?: () => boolean): void => {
         setState('loading');
@@ -131,6 +149,31 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
         } catch (error) {
             setSubmitError((error as Error).message);
             setSubmitState('error');
+        }
+    };
+
+    /**
+     * Silme, "İK ve İdari İşler Personeli" grubundakiler için detay popup'ında
+     * çöp kutusu ikonuyla tetiklenir; asıl kalıcı silme öncesi (geri alınamaz
+     * bir işlem olduğu için) her zaman bir onay diyaloğu araya giriyor.
+     */
+    const handleDeleteConfirm = async (): Promise<void> => {
+        if (!selected) {
+            return;
+        }
+        setDeleteState('sending');
+        try {
+            const result = await deleteAnnouncement(context, selected.id);
+            if (result.success) {
+                setIsDeleteConfirmOpen(false);
+                setSelected(undefined);
+                setDeleteState('idle');
+                loadAnnouncements();
+            } else {
+                setDeleteState('error');
+            }
+        } catch {
+            setDeleteState('error');
         }
     };
 
@@ -321,12 +364,41 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
             maxWidth: '100%',
             marginTop: 8
         },
+        // Görsel seçildiğinde dropzone, ortalanmış ikon+etiket yerine soldan
+        // hizalı bir "önizleme satırı"na dönüşür — kullanıcı ne yüklediğini
+        // metinden değil gerçek küçük resimden görür.
+        imageDropzoneFilled: {
+            flexDirection: 'row',
+            justifyContent: 'flex-start',
+            textAlign: 'left',
+            padding: '10px 14px'
+        },
+        imagePreviewThumb: {
+            width: 44,
+            height: 44,
+            borderRadius: 8,
+            objectFit: 'cover',
+            flexShrink: 0,
+            marginRight: 12
+        },
+        imagePreviewTextGroup: {
+            minWidth: 0,
+            overflow: 'hidden'
+        },
         hiddenFileInput: {
             display: 'none'
         },
         formActions: {
             display: 'flex',
             justifyContent: 'flex-end'
+        },
+        cancelButton: {
+            marginRight: 12
+        },
+        deleteConfirmBody: {
+            fontSize: 14,
+            lineHeight: 1.6,
+            color: theme.semanticColors.bodyText
         },
         formErrorDetail: {
             fontSize: 11,
@@ -422,7 +494,13 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
                 </>
             )}
 
-            <DetailModal isOpen={!!selected} title={selected?.title} onDismiss={() => setSelected(undefined)}>
+            <DetailModal
+                isOpen={!!selected}
+                title={selected?.title}
+                onDismiss={() => setSelected(undefined)}
+                onDeleteClick={canManageAnnouncements ? () => setIsDeleteConfirmOpen(true) : undefined}
+                deleteAriaLabel="Duyuruyu sil"
+            >
                 {selected && (
                     <>
                         {selected.imageUrl && (
@@ -438,6 +516,34 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
                     </>
                 )}
             </DetailModal>
+
+            <Dialog
+                hidden={!isDeleteConfirmOpen}
+                onDismiss={() => { setIsDeleteConfirmOpen(false); setDeleteState('idle'); }}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: 'Duyuru silinsin mi?',
+                    subText: `"${selected?.title ?? ''}" başlıklı duyuru kalıcı olarak silinecek. Bu işlem geri alınamaz.`
+                }}
+            >
+                {deleteState === 'error' && (
+                    <MessageBar messageBarType={MessageBarType.error}>Duyuru silinemedi. Lütfen tekrar deneyin.</MessageBar>
+                )}
+                <DialogFooter>
+                    {deleteState === 'sending' ? (
+                        <Spinner size={SpinnerSize.small} label="Siliniyor..." />
+                    ) : (
+                        <>
+                            <PrimaryButton
+                                text="Evet, Sil"
+                                styles={{ root: { background: '#B91C1C', border: 'none' }, rootHovered: { background: '#991B1B' } }}
+                                onClick={() => { handleDeleteConfirm().catch(() => { /* handled in handleDeleteConfirm */ }); }}
+                            />
+                            <DefaultButton text="Vazgeç" onClick={() => { setIsDeleteConfirmOpen(false); setDeleteState('idle'); }} />
+                        </>
+                    )}
+                </DialogFooter>
+            </Dialog>
 
             <DetailModal isOpen={isAddOpen} title="Yeni Duyuru Ekle" onDismiss={closeAddModal}>
                 <div className={styles.formContainer}>
@@ -464,13 +570,24 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
                         styles={inputFieldStyles}
                     />
                     <label className={styles.dropzoneWrapper} htmlFor="announcement-image-input">
-                        <div className={styles.imageDropzone}>
-                            <div className={styles.imageDropzoneIconWrap}>
-                                <Icon iconName="Photo2Add" className={styles.imageDropzoneIcon} />
-                            </div>
-                            <span className={styles.imageDropzoneLabel}>Görsel Ekle</span>
-                            <span className={styles.imageDropzoneHint}>Opsiyonel</span>
-                            {newImage && <span className={styles.imageDropzoneFileName}>{newImage.name}</span>}
+                        <div className={`${styles.imageDropzone} ${newImagePreviewUrl ? styles.imageDropzoneFilled : ''}`}>
+                            {newImagePreviewUrl ? (
+                                <>
+                                    <img src={newImagePreviewUrl} alt="" className={styles.imagePreviewThumb} />
+                                    <div className={styles.imagePreviewTextGroup}>
+                                        <div className={styles.imageDropzoneFileName} style={{ marginTop: 0 }}>{newImage?.name}</div>
+                                        <span className={styles.imageDropzoneHint}>Değiştirmek için tıklayın</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className={styles.imageDropzoneIconWrap}>
+                                        <Icon iconName="Photo2Add" className={styles.imageDropzoneIcon} />
+                                    </div>
+                                    <span className={styles.imageDropzoneLabel}>Görsel Ekle</span>
+                                    <span className={styles.imageDropzoneHint}>Opsiyonel</span>
+                                </>
+                            )}
                         </div>
                         <input
                             id="announcement-image-input"
@@ -485,11 +602,14 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
                         {submitState === 'sending' ? (
                             <Spinner size={SpinnerSize.small} label="Kaydediliyor..." />
                         ) : (
-                            <PrimaryButton
-                                text="Kaydet"
-                                onClick={() => { handleAddSubmit().catch(() => { /* handled in handleAddSubmit */ }); }}
-                                disabled={!newTitle.trim() || !newBody.trim()}
-                            />
+                            <>
+                                <DefaultButton className={styles.cancelButton} text="Vazgeç" onClick={closeAddModal} />
+                                <PrimaryButton
+                                    text="Kaydet"
+                                    onClick={() => { handleAddSubmit().catch(() => { /* handled in handleAddSubmit */ }); }}
+                                    disabled={!newTitle.trim() || !newBody.trim()}
+                                />
+                            </>
                         )}
                     </div>
                 </div>

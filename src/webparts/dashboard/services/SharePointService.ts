@@ -758,3 +758,45 @@ export const createEvent = async (
         return { success: false, errorMessage: (error as Error).message };
     }
 };
+
+/**
+ * Verilen listeden TEK bir öğeyi kalıcı olarak siler (SharePoint REST POST +
+ * "X-HTTP-Method: DELETE" override — tarayıcılar/SPHttpClient doğrudan DELETE
+ * body/header kombinasyonunu her zaman güvenilir göndermediği için bu,
+ * SharePoint REST API'sinin resmi önerdiği yöntemdir). "IF-MATCH: *" ile
+ * eşzamanlılık (concurrency) kontrolü atlanır — burada bir öğenin son halini
+ * koruma değil, silme amaçlanıyor.
+ */
+const deleteListItem = async (context: WebPartContext, listTitle: string, itemId: number): Promise<ISPWriteResult> => {
+    const webUrl = context.pageContext.web.absoluteUrl;
+    const endpoint = `${webUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items(${itemId})`;
+
+    try {
+        const response = await context.spHttpClient.post(endpoint, SPHttpClient.configurations.v1, {
+            headers: {
+                Accept: 'application/json;odata=nometadata',
+                'IF-MATCH': '*',
+                'X-HTTP-Method': 'DELETE'
+            }
+        });
+
+        if (!response.ok) {
+            const detail = await extractSPErrorDetail(response);
+            console.error(`[SharePointService] "${listTitle}" öğesi (${itemId}) silinemedi — istek: ${endpoint}`, detail);
+            return { success: false, errorMessage: detail };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error(`[SharePointService] "${listTitle}" öğesi silinirken beklenmeyen hata:`, error);
+        return { success: false, errorMessage: (error as Error).message };
+    }
+};
+
+/** "Duyurular" listesinden tek bir duyuruyu kalıcı olarak siler. */
+export const deleteAnnouncement = async (context: WebPartContext, itemId: number): Promise<ISPWriteResult> =>
+    deleteListItem(context, ANNOUNCEMENTS_LIST_TITLE, itemId);
+
+/** "Etkinlikler" listesinden tek bir etkinliği kalıcı olarak siler. */
+export const deleteEvent = async (context: WebPartContext, itemId: number): Promise<ISPWriteResult> =>
+    deleteListItem(context, EVENTS_LIST_TITLE, itemId);

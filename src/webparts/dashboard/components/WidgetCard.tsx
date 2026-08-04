@@ -74,23 +74,22 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
     const theme = useTheme();
     const accent = accentColor ?? theme.palette.themePrimary;
 
-    // Kullanıcı isteği: "3 tema da birbirinden farklı olacak — arkaplan,
-    // widgetlar ve özellikle karşılama header'ı FULL birbirinden farklı renk
-    // paletleri kullanacak." Kartların KENDİSİ (zemin) daha önce kasıtlı
-    // olarak sabit/açık bırakılmıştı (tam koyu widget teması denenip
-    // kullanıcı geri bildirimiyle geri alınmıştı) — bu hâlâ geçerli, kart
-    // AÇIK/okunaklı kalıyor. Ama kullanıcı sonradan "tüm widget'larda renk
-    // paleti düzenlemeleri" istedi; bu yüzden zaman diliminin hissi artık
-    // sadece ince bir üst şeritle sınırlı değil: (1) şerit/ikon rozeti daha
-    // BASKIN bir harmanla (0.45 -> 0.6) günün rengini taşıyor, (2) kartın
-    // kendi zemin degradesi de artık nötr yerine hafif bir "ambiyans" tonuyla
-    // (ambientBase, %8 harman — okunurluğu bozmayacak kadar hafif) başlıyor.
-    // Widget'ın KENDİ kimlik rengi (accent, ör. Duyurular turuncu) hep
-    // ayırt edilebilir kalıyor, günün paleti üstüne ince bir kat gibi biniyor.
+    // ÖNCEKİ HATA: flairAccent (ikon rozeti + üst şerit) mevsim rengiyle %60
+    // ağırlıkla harmanlanıyordu — yani her widget'ın KENDİ kimlik renginden
+    // (accent, ör. Duyurular turuncu, Etkinlikler mor) DAHA BASKINDI. Sabah
+    // ve öğlen mevsim rengi ikisi de sıcak/altın tondaydı, bu yüzden TÜM
+    // widget'ların rozeti — kendi rengi ne olursa olsun — aynı "tuhaf sarı"ya
+    // çekiliyordu; 18 widget'ın özenle seçilmiş 18 farklı accentColor'ı
+    // (bkz. Dashboard.tsx) görünürde kayboluyordu. Artık ağırlık tersine
+    // çevrildi: mevsim rengi sadece İNCE bir "parıltı" (%18) katıyor, widget'ın
+    // kendi kimliği (%82) her zaman baskın ve ayırt edilebilir kalıyor.
+    // ambientBase (kartın zemin degradesinin ilk durağı) ise hâlâ hafif
+    // (%10) ama artık üç zaman diliminde de belirgin şekilde farklı bir
+    // "ambiyans" hissi versin diye biraz güçlendirildi.
     const timeBucket = useTimeAwareTheme();
     const headerVariant = getTimeTheme(timeBucket).header;
-    const flairAccent = mixHex(headerVariant.decorationColor, accent, 0.6);
-    const ambientBase = mixHex(headerVariant.decorationColor, theme.palette.neutralLighterAlt, 0.08);
+    const flairAccent = mixHex(headerVariant.decorationColor, accent, 0.18);
+    const ambientBase = mixHex(headerVariant.decorationColor, theme.palette.neutralLighterAlt, 0.10);
 
     const styles = mergeStyleSets({
         card: {

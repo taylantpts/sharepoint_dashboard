@@ -86,7 +86,14 @@ const THEMES: Record<TimeBucket, ITimeTheme> = {
             dateText: 'rgba(90,70,50,0.72)',
             greetingIcon: 'Coffee',
             decorationChar: '✴',
-            decorationColor: '#C98A54'
+            // ÖNCEKİ HATA: bu ton (#C98A54) sabahın #F0A868'iyle aynı
+            // peach/altın ailesindeydi — widget kartlarındaki ince "mevsim
+            // parıltısı" (bkz. WidgetCard.tsx flairAccent) sabah VE öğlende
+            // neredeyse aynı sarımsı-turuncuya çekiliyor, ikisi ayırt
+            // edilemiyordu ("tuhaf sarı" şikayeti). Artık gerçekten farklı bir
+            // aile: doygun, kırmızıya yakın bir "kavrulmuş turuncu/toprak"
+            // (terracotta) — sabahın soluk altınından belirgin şekilde ayrışır.
+            decorationColor: '#C1652E'
         }
     },
     evening: {

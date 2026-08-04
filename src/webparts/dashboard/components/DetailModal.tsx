@@ -6,6 +6,9 @@ export interface IDetailModalProps {
     title?: string;
     onDismiss: () => void;
     children?: React.ReactNode;
+    /** Verilirse kapatma butonunun solunda kırmızı bir çöp kutusu butonu render edilir — yetkili kullanıcılar için silme aksiyonu. */
+    onDeleteClick?: () => void;
+    deleteAriaLabel?: string;
 }
 
 /**
@@ -16,7 +19,7 @@ export interface IDetailModalProps {
  * 1.6) gövde metni ve sağ üstte belirgin bir kapatma (X) butonu içerir.
  */
 const DetailModal: React.FunctionComponent<IDetailModalProps> = (props) => {
-    const { isOpen, title, onDismiss, children } = props;
+    const { isOpen, title, onDismiss, children, onDeleteClick, deleteAriaLabel } = props;
     const theme = useTheme();
 
     const styles = mergeStyleSets({
@@ -44,6 +47,13 @@ const DetailModal: React.FunctionComponent<IDetailModalProps> = (props) => {
             lineHeight: 1.3,
             marginRight: 16
         },
+        // NOT: "gap" burada da kullanılmıyor — iki buton yan yana geldiğinde
+        // aralarındaki boşluk, silme butonuna verilen marginRight ile sağlanıyor.
+        headerActions: {
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0
+        },
         closeButton: {
             flexShrink: 0,
             width: 36,
@@ -53,6 +63,21 @@ const DetailModal: React.FunctionComponent<IDetailModalProps> = (props) => {
             selectors: {
                 ':hover': {
                     background: theme.palette.neutralLighter
+                }
+            }
+        },
+        deleteButton: {
+            flexShrink: 0,
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            marginRight: 8,
+            color: '#B91C1C',
+            background: 'rgba(185,28,28,0.08)',
+            selectors: {
+                ':hover': {
+                    color: '#B91C1C',
+                    background: 'rgba(185,28,28,0.16)'
                 }
             }
         },
@@ -66,12 +91,23 @@ const DetailModal: React.FunctionComponent<IDetailModalProps> = (props) => {
         <Modal isOpen={isOpen} onDismiss={onDismiss} isBlocking={false} containerClassName={styles.container}>
             <div className={styles.header}>
                 <div className={styles.title}>{title}</div>
-                <IconButton
-                    iconProps={{ iconName: 'Cancel' }}
-                    ariaLabel="Kapat"
-                    onClick={onDismiss}
-                    className={styles.closeButton}
-                />
+                <div className={styles.headerActions}>
+                    {onDeleteClick && (
+                        <IconButton
+                            iconProps={{ iconName: 'Delete' }}
+                            ariaLabel={deleteAriaLabel ?? 'Sil'}
+                            title={deleteAriaLabel ?? 'Sil'}
+                            onClick={onDeleteClick}
+                            className={styles.deleteButton}
+                        />
+                    )}
+                    <IconButton
+                        iconProps={{ iconName: 'Cancel' }}
+                        ariaLabel="Kapat"
+                        onClick={onDismiss}
+                        className={styles.closeButton}
+                    />
+                </div>
             </div>
             <div className={styles.body}>{children}</div>
         </Modal>

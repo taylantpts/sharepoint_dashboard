@@ -1,12 +1,13 @@
 import * as React from 'react';
 import {
     Icon, Spinner, SpinnerSize, MessageBar, MessageBarType, Text, IconButton, TextField, PrimaryButton,
+    DefaultButton, Dialog, DialogType, DialogFooter,
     DatePicker, DayOfWeek, useTheme, mergeStyleSets, ITextFieldStyles
 } from '@fluentui/react';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import WidgetCard from '../WidgetCard';
 import DetailModal from '../DetailModal';
-import { getUpcomingEvents, createEvent, IUpcomingEventItem } from '../../services/SharePointService';
+import { getUpcomingEvents, createEvent, deleteEvent, IUpcomingEventItem } from '../../services/SharePointService';
 import { DATA_UNAVAILABLE_MESSAGE } from '../../constants';
 import { usePermissions } from '../../hooks/usePermissions';
 
@@ -79,6 +80,21 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
     const [submitState, setSubmitState] = React.useState<SubmitState>('idle');
     const [submitError, setSubmitError] = React.useState<string | undefined>(undefined);
 
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
+    const [deleteState, setDeleteState] = React.useState<SubmitState>('idle');
+
+    // Seçilen görsel için canlı önizleme — bkz. AnnouncementsFeed'deki aynı desen.
+    const [newImagePreviewUrl, setNewImagePreviewUrl] = React.useState<string | undefined>(undefined);
+    React.useEffect(() => {
+        if (!newImage) {
+            setNewImagePreviewUrl(undefined);
+            return;
+        }
+        const url = URL.createObjectURL(newImage);
+        setNewImagePreviewUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [newImage]);
+
     const loadEvents = React.useCallback((onlyIfMounted?: () => boolean): void => {
         setState('loading');
         getUpcomingEvents(context)
@@ -144,6 +160,27 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
         } catch (error) {
             setSubmitError((error as Error).message);
             setSubmitState('error');
+        }
+    };
+
+    /** Bkz. AnnouncementsFeed.handleDeleteConfirm — aynı onay-sonra-sil deseni. */
+    const handleDeleteConfirm = async (): Promise<void> => {
+        if (!selected) {
+            return;
+        }
+        setDeleteState('sending');
+        try {
+            const result = await deleteEvent(context, selected.id);
+            if (result.success) {
+                setIsDeleteConfirmOpen(false);
+                setSelected(undefined);
+                setDeleteState('idle');
+                loadEvents();
+            } else {
+                setDeleteState('error');
+            }
+        } catch {
+            setDeleteState('error');
         }
     };
 
@@ -396,12 +433,33 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
             maxWidth: '100%',
             marginTop: 8
         },
+        imageDropzoneFilled: {
+            flexDirection: 'row',
+            justifyContent: 'flex-start',
+            textAlign: 'left',
+            padding: '10px 14px'
+        },
+        imagePreviewThumb: {
+            width: 44,
+            height: 44,
+            borderRadius: 8,
+            objectFit: 'cover',
+            flexShrink: 0,
+            marginRight: 12
+        },
+        imagePreviewTextGroup: {
+            minWidth: 0,
+            overflow: 'hidden'
+        },
         hiddenFileInput: {
             display: 'none'
         },
         formActions: {
             display: 'flex',
             justifyContent: 'flex-end'
+        },
+        cancelButton: {
+            marginRight: 12
         },
         formErrorDetail: {
             fontSize: 11,
@@ -450,7 +508,13 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                 </div>
             )}
 
-            <DetailModal isOpen={!!selected} title={selected?.title} onDismiss={() => setSelected(undefined)}>
+            <DetailModal
+                isOpen={!!selected}
+                title={selected?.title}
+                onDismiss={() => setSelected(undefined)}
+                onDeleteClick={canManageAnnouncements ? () => setIsDeleteConfirmOpen(true) : undefined}
+                deleteAriaLabel="Etkinliği sil"
+            >
                 {selected && (
                     <>
                         {selected.imageUrl && (
@@ -466,6 +530,34 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                     </>
                 )}
             </DetailModal>
+
+            <Dialog
+                hidden={!isDeleteConfirmOpen}
+                onDismiss={() => { setIsDeleteConfirmOpen(false); setDeleteState('idle'); }}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: 'Etkinlik silinsin mi?',
+                    subText: `"${selected?.title ?? ''}" başlıklı etkinlik kalıcı olarak silinecek. Bu işlem geri alınamaz.`
+                }}
+            >
+                {deleteState === 'error' && (
+                    <MessageBar messageBarType={MessageBarType.error}>Etkinlik silinemedi. Lütfen tekrar deneyin.</MessageBar>
+                )}
+                <DialogFooter>
+                    {deleteState === 'sending' ? (
+                        <Spinner size={SpinnerSize.small} label="Siliniyor..." />
+                    ) : (
+                        <>
+                            <PrimaryButton
+                                text="Evet, Sil"
+                                styles={{ root: { background: '#B91C1C', border: 'none' }, rootHovered: { background: '#991B1B' } }}
+                                onClick={() => { handleDeleteConfirm().catch(() => { /* handled in handleDeleteConfirm */ }); }}
+                            />
+                            <DefaultButton text="Vazgeç" onClick={() => { setIsDeleteConfirmOpen(false); setDeleteState('idle'); }} />
+                        </>
+                    )}
+                </DialogFooter>
+            </Dialog>
 
             <DetailModal isOpen={isAddOpen} title="Yeni Etkinlik Ekle" onDismiss={closeAddModal}>
                 <div className={styles.formContainer}>
@@ -520,13 +612,24 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                         styles={topLevelFieldStyles}
                     />
                     <label className={styles.dropzoneWrapper} htmlFor="event-image-input">
-                        <div className={styles.imageDropzone}>
-                            <div className={styles.imageDropzoneIconWrap}>
-                                <Icon iconName="Photo2Add" className={styles.imageDropzoneIcon} />
-                            </div>
-                            <span className={styles.imageDropzoneLabel}>Görsel Ekle</span>
-                            <span className={styles.imageDropzoneHint}>Opsiyonel</span>
-                            {newImage && <span className={styles.imageDropzoneFileName}>{newImage.name}</span>}
+                        <div className={`${styles.imageDropzone} ${newImagePreviewUrl ? styles.imageDropzoneFilled : ''}`}>
+                            {newImagePreviewUrl ? (
+                                <>
+                                    <img src={newImagePreviewUrl} alt="" className={styles.imagePreviewThumb} />
+                                    <div className={styles.imagePreviewTextGroup}>
+                                        <div className={styles.imageDropzoneFileName} style={{ marginTop: 0 }}>{newImage?.name}</div>
+                                        <span className={styles.imageDropzoneHint}>Değiştirmek için tıklayın</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className={styles.imageDropzoneIconWrap}>
+                                        <Icon iconName="Photo2Add" className={styles.imageDropzoneIcon} />
+                                    </div>
+                                    <span className={styles.imageDropzoneLabel}>Görsel Ekle</span>
+                                    <span className={styles.imageDropzoneHint}>Opsiyonel</span>
+                                </>
+                            )}
                         </div>
                         <input
                             id="event-image-input"
@@ -541,11 +644,14 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                         {submitState === 'sending' ? (
                             <Spinner size={SpinnerSize.small} label="Kaydediliyor..." />
                         ) : (
-                            <PrimaryButton
-                                text="Kaydet"
-                                onClick={() => { handleAddSubmit().catch(() => { /* handled in handleAddSubmit */ }); }}
-                                disabled={!newTitle.trim() || !newDate}
-                            />
+                            <>
+                                <DefaultButton className={styles.cancelButton} text="Vazgeç" onClick={closeAddModal} />
+                                <PrimaryButton
+                                    text="Kaydet"
+                                    onClick={() => { handleAddSubmit().catch(() => { /* handled in handleAddSubmit */ }); }}
+                                    disabled={!newTitle.trim() || !newDate}
+                                />
+                            </>
                         )}
                     </div>
                 </div>
