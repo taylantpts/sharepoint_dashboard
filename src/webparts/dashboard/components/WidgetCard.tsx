@@ -78,7 +78,6 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
             flexDirection: 'column',
             height: '100%',
             boxSizing: 'border-box',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
             selectors: {
                 '::before': {
                     content: '""',
@@ -89,10 +88,6 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
                     height: 4,
                     borderRadius: '0 0 4px 4px',
                     background: `linear-gradient(90deg, ${accent} 0%, ${hexToRgba(accent, 0.5)} 100%)`
-                },
-                ':hover': {
-                    transform: 'translateY(-6px)',
-                    boxShadow: `0 16px 34px rgba(15,23,42,0.16), 0 0 0 1px ${hexToRgba(accent, 0.25)}`
                 }
             }
         },
