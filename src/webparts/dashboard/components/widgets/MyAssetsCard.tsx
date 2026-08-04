@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { DefaultButton, Icon, useTheme, mergeStyleSets } from '@fluentui/react';
+import { Icon, useTheme, mergeStyleSets } from '@fluentui/react';
 import WidgetCard from '../WidgetCard';
 
 const ASSET_SYSTEM_URL = 'https://asm.komagene.com.tr/';
@@ -7,80 +7,129 @@ const ASSET_SYSTEM_URL = 'https://asm.komagene.com.tr/';
 const MyAssetsCard: React.FunctionComponent = () => {
     const theme = useTheme();
 
+    // NOT: "gap" flex özelliği burada BİLİNÇLİ OLARAK KULLANILMIYOR — bu
+    // sayfanın render edildiği (kurumsal/eski) tarayıcı ortamında flex "gap"
+    // desteklenmiyor; iconWrap/text kendi marginRight + marginBottom'ını taşıyor.
+    // Yan yana duran "İnsan Kaynakları" ve "BT Destek Merkezi" ile AYNI
+    // "banner + bilet" düzeni — önceden bu widget küçük/sade bir kutuydu,
+    // komşularıyla hizası (ikon boyutu, başlık/alt metin punto hiyerarşisi,
+    // buton stili) tutmuyordu.
     const styles = mergeStyleSets({
-        // NOT: "gap" flex özelliği burada BİLİNÇLİ OLARAK KULLANILMIYOR — bu
-        // sayfanın render edildiği (kurumsal/eski) tarayıcı ortamında flex "gap"
-        // desteklenmiyor. Satır `flexWrap: 'wrap'` olduğu için her çocuğa hem
-        // marginRight (aynı satırdaki boşluk) hem marginBottom (sarılan satırlar
-        // arası boşluk) veriliyor.
-        card: {
+        banner: {
             display: 'flex',
             alignItems: 'center',
-            padding: '18px 20px',
-            borderRadius: 10,
-            border: `2px solid ${theme.palette.themeLight}`,
-            background: theme.palette.themeLighterAlt,
+            padding: '28px 32px',
+            borderRadius: 12,
+            background: `linear-gradient(135deg, ${theme.palette.themeLighterAlt} 0%, ${theme.palette.themeLighter} 100%)`,
             flexWrap: 'wrap'
         },
         iconWrap: {
-            width: 48,
-            height: 48,
-            borderRadius: 10,
-            background: theme.palette.themePrimary,
+            width: 68,
+            height: 68,
+            borderRadius: '50%',
+            background: theme.palette.neutralLighterAlt,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            marginRight: 16,
-            marginBottom: 16
+            boxShadow: '0 1.6px 3.6px rgba(0,0,0,0.08)',
+            marginRight: 20,
+            marginBottom: 20
         },
         icon: {
-            fontSize: 22,
-            color: '#ffffff'
+            fontSize: 32,
+            color: '#6fa87a'
         },
         text: {
             flexGrow: 1,
-            minWidth: 180,
-            marginRight: 16,
-            marginBottom: 16
+            minWidth: 200,
+            marginRight: 20,
+            marginBottom: 20
         },
         title: {
-            fontSize: 14,
+            fontSize: 18,
             fontWeight: 700,
-            color: theme.semanticColors.bodyText
+            color: theme.palette.themeDark
         },
-        desc: {
+        subtitle: {
             fontSize: 12,
             color: theme.semanticColors.bodySubtext,
-            marginTop: 2
+            marginTop: 4
         },
-        ssoNote: {
+        ticket: {
+            display: 'flex',
+            alignItems: 'stretch',
+            textDecoration: 'none',
+            background: 'linear-gradient(135deg, #6fa87a 0%, #3f6a4c 100%)',
+            borderRadius: 10,
+            overflow: 'hidden',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.20)',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+            selectors: {
+                ':hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 18px rgba(0,0,0,0.26)'
+                }
+            }
+        },
+        ticketIconWrap: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 56,
+            flexShrink: 0,
+            background: 'rgba(255,255,255,0.14)'
+        },
+        ticketIcon: {
+            fontSize: 22,
+            color: '#ffffff'
+        },
+        ticketDivider: {
+            borderLeft: '2px dashed rgba(255,255,255,0.45)',
+            margin: '10px 0'
+        },
+        ticketLabel: {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            padding: '10px 22px',
+            color: '#ffffff'
+        },
+        ticketLabelMain: {
+            fontSize: 14,
+            fontWeight: 700
+        },
+        ticketLabelSub: {
             fontSize: 11,
-            color: theme.semanticColors.bodySubtext,
-            marginTop: 10
+            color: 'rgba(255,255,255,0.82)',
+            marginTop: 2
         }
     });
 
     return (
         <WidgetCard title="Zimmetlerim" subtitle="Üzerinize kayıtlı cihaz ve envanter" iconName="Devices3" accentColor="#6fa87a">
-            <div className={styles.card}>
+            <div className={styles.banner}>
                 <div className={styles.iconWrap}>
                     <Icon iconName="Devices3" className={styles.icon} />
                 </div>
                 <div className={styles.text}>
-                    <div className={styles.title}>Cihaz ve zimmet kayıtlarınız</div>
-                    <div className={styles.desc}>Zimmet kayıtları ayrı bir varlık yönetim sisteminde tutulur.</div>
+                    <div className={styles.title}>Cihaz ve zimmet kayıtlarınız hazır</div>
+                    <div className={styles.subtitle}>
+                        Zimmet kayıtları ayrı bir varlık yönetim sisteminde tutulur. Microsoft hesabınızla (SSO) otomatik giriş yapılır, ayrı bir kullanıcı adı/şifre gerekmez.
+                    </div>
                 </div>
-                <DefaultButton
-                    iconProps={{ iconName: 'OpenInNewWindow' }}
-                    text="Zimmetlerimi Görüntüle"
-                    href={ASSET_SYSTEM_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    styles={{ root: { fontWeight: 600 } }}
-                />
+                <a href={ASSET_SYSTEM_URL} target="_blank" rel="noopener noreferrer" className={styles.ticket}>
+                    <span className={styles.ticketIconWrap}>
+                        <Icon iconName="OpenInNewWindow" className={styles.ticketIcon} />
+                    </span>
+                    <span className={styles.ticketDivider} />
+                    <span className={styles.ticketLabel}>
+                        <span className={styles.ticketLabelMain}>Zimmetlerimi Görüntüle</span>
+                        <span className={styles.ticketLabelSub}>Varlık Yönetim Sistemine Git</span>
+                    </span>
+                </a>
             </div>
-            <div className={styles.ssoNote}>Microsoft hesabınızla (SSO) otomatik giriş yapılır — ayrı bir kullanıcı adı/şifre gerekmez.</div>
         </WidgetCard>
     );
 };
