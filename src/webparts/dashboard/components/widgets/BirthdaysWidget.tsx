@@ -99,7 +99,7 @@ const BirthdaysWidget: React.FunctionComponent<IBirthdaysWidgetProps> = (props) 
     });
 
     return (
-        <WidgetCard title="Doğum Günleri" subtitle="Bu ay kutlama zamanı" iconName="Balloons" accentColor="#c77fae">
+        <WidgetCard title="Doğum Günleri" subtitle="Bu ay kutlama zamanı" iconName="Balloons">
             {state === 'loading' && <Spinner size={SpinnerSize.small} label="Yükleniyor..." />}
             {state === 'error' && <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>}
             {state === 'loaded' && birthdays.length === 0 && (

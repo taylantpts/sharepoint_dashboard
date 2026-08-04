@@ -95,7 +95,7 @@ const QuickLinksPanel: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="Hızlı Erişim" subtitle="Sık kullanılan uygulama ve portallar" iconName="Rocket" accentColor="#b8945a">
+        <WidgetCard title="Hızlı Erişim" subtitle="Sık kullanılan uygulama ve portallar" iconName="Rocket">
             <div className={styles.grid}>
                 {QUICK_LINKS.map((link) => (
                     <a

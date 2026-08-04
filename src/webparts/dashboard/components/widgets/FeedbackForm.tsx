@@ -58,7 +58,7 @@ const FeedbackForm: React.FunctionComponent<IFeedbackFormProps> = (props) => {
     };
 
     return (
-        <WidgetCard title="Geri Bildirim" subtitle="Görüş ve önerilerinizi bize iletin" iconName="Feedback" accentColor="#c77fae">
+        <WidgetCard title="Geri Bildirim" subtitle="Görüş ve önerilerinizi bize iletin" iconName="Feedback">
             {state === 'success' && (
                 <MessageBar messageBarType={MessageBarType.success} onDismiss={() => setState('idle')}>
                     Geri bildiriminiz için teşekkürler, iletildi.

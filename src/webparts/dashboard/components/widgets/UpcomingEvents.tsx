@@ -475,7 +475,6 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
             title="Yaklaşan Etkinlikler"
             subtitle="Şirket etkinlik takvimi"
             iconName="Calendar"
-            accentColor="#9a8bc7"
             headerAction={canManageAnnouncements && (
                 <IconButton
                     iconProps={{ iconName: 'Add' }}

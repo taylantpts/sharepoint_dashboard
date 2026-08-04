@@ -263,7 +263,7 @@ const PersonalAssistant: React.FunctionComponent<IPersonalAssistantProps> = (pro
     });
 
     return (
-        <WidgetCard title="Kişisel Asistan" subtitle="Bugünkü toplantılarınız ve yapılacaklar listeniz" iconName="Calendar" accentColor="#4f9d90">
+        <WidgetCard title="Kişisel Asistan" subtitle="Bugünkü toplantılarınız ve yapılacaklar listeniz" iconName="Calendar">
             <div className={styles.columns}>
                 <div>
                     <div className={styles.columnTitle}>

@@ -6,7 +6,6 @@ export interface ILocationCardProps {
     label: string;
     address: string;
     iconName: string;
-    accentColor: string;
     /**
      * Haritada TEK bir nokta işaretlensin diye kullanılan, sadeleştirilmiş
      * arama sorgusu. Kat/ofis no gibi ayrıntılar Google'ın bina içindeki
@@ -48,7 +47,7 @@ const openInGoogleMaps = (address: string, coordinates?: { lat: number; lon: num
  * kullanılabilmesi için her lokasyon kendi WidgetCard'ına sahip.
  */
 const LocationCard: React.FunctionComponent<ILocationCardProps> = (props) => {
-    const { label, address, iconName, accentColor, mapQuery, coordinates } = props;
+    const { label, address, iconName, mapQuery, coordinates } = props;
     const theme = useTheme();
     const query = mapQuery ?? address;
     const [copied, setCopied] = React.useState(false);
@@ -113,7 +112,7 @@ const LocationCard: React.FunctionComponent<ILocationCardProps> = (props) => {
         },
         pinIcon: {
             fontSize: 13,
-            color: accentColor,
+            color: theme.palette.themePrimary,
             marginTop: 3,
             flexShrink: 0,
             marginRight: 8
@@ -145,7 +144,7 @@ const LocationCard: React.FunctionComponent<ILocationCardProps> = (props) => {
     });
 
     return (
-        <WidgetCard title={label} subtitle="Adres ve konum" iconName={iconName} accentColor={accentColor}>
+        <WidgetCard title={label} subtitle="Adres ve konum" iconName={iconName}>
             <div className={styles.content}>
                 <div className={styles.addressRow}>
                     <Icon iconName="MapPin" className={styles.pinIcon} />

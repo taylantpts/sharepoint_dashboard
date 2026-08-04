@@ -320,7 +320,7 @@ const RequiredDocuments: React.FunctionComponent<IRequiredDocumentsProps> = (pro
     });
 
     return (
-        <WidgetCard title="Gerekli Dosyalar" subtitle="Sık aranan doküman ve formlar" iconName="DocumentSet" accentColor="#8a97a0">
+        <WidgetCard title="Gerekli Dosyalar" subtitle="Sık aranan doküman ve formlar" iconName="DocumentSet">
             <div className={styles.grid}>
                 {CATEGORIES.map((cat) => (
                     <button

@@ -3,7 +3,6 @@ import * as React from 'react';
 export type TimeBucket = 'morning' | 'day' | 'evening';
 
 export interface IHeaderVariant {
-    /** Cam panelin zemini — üç zaman diliminde de FARKLI (beyaz/krem/lacivert), sadece tint değil. */
     glassBackground: string;
     glassBorder: string;
     /** "GÜNAYDIN" gibi üst etiketin rengi. */
@@ -13,147 +12,80 @@ export interface IHeaderVariant {
     clockText: string;
     clockSecondsText: string;
     dateText: string;
-    /** Fluent ikon adı — selamlama etiketinin yanındaki ikon. */
+    /** Fluent ikon adı — selamlama etiketinin yanındaki ikon (saate göre değişir, RENK değişmez). */
     greetingIcon: string;
-    /** Süsleme (ışıltı) karakteri — zaman dilimine göre farklı bir "kimlik". */
+    /** Süsleme (ışıltı) karakteri — saate göre değişir (RENK değişmez, bkz. decorationColor). */
     decorationChar: string;
     decorationColor: string;
 }
 
 export interface ITimeTheme {
     label: string;
-    /** Cam panelin arkasında hafifçe süzülen, dağınık "mesh" gradyanının 5 durağı. */
     meshColors: [string, string, string, string, string];
-    /** Selamlama/saat metinlerinin rengi — header'ın cam zemininde okunaklı bir ton. */
     text: string;
-    /** Sayfanın TAMAMININ (widget grid'inin arkası) 3 duraklı zemin degradesi. */
     pageBackground: [string, string, string];
-    /** Karşılama header'ının zaman dilimine göre TAMAMEN farklı kimliği (renk + ikon + süsleme). */
     header: IHeaderVariant;
-    /**
-     * Widget KARTLARININ zemin tonu — header'ın decorationColor'ından (o,
-     * sadece küçük ışıltı glyph'i içindir) BİLİNÇLİ OLARAK AYRI bir alan.
-     * ÖNCEKİ HATA: WidgetCard.tsx kartların zeminini de decorationColor ile
-     * boyuyordu; bu renk header'daki ışıltı için seçilmişti (sabah/öğlen
-     * ikisi de sıcak altın/turuncu ailesindeydi) ve kartlara uygulanınca
-     * "kirli/tekdüze sarı" bir izlenim veriyordu. cardAmbient, sayfanın
-     * KENDİ mesh/zemin paletinden (meshColors/pageBackground ile aynı aile)
-     * türetilir — böylece kart zemini, o zaman diliminin sayfa kimliğiyle
-     * (sabah=berrak mavi, öğlen=krem, akşam=gece mavisi) GERÇEKTEN tutarlı
-     * olur, ayrı/rastgele bir ton değil.
-     */
     cardAmbient: string;
 }
 
-/**
- * Zaman bazlı sayfa zemini + KARŞILAMA HEADER'I artık üç zaman diliminde
- * BİLİNÇLİ OLARAK BİRBİRİNDEN TAMAMEN FARKLI: sabah berrak/soğuk mavi-beyaz
- * cam, öğlen sıcak/krem "relax" cam (mavi durağı YOK — morning'den kasıtlı
- * olarak uzak), akşam ise gerçekten KOYU lacivert bir cam (beyaz camın
- * zamana göre sadece tonlanması değil). Her üçü de kendi ikonuna (Sunny /
- * Coffee / ClearNight) ve kendi süsleme rengine/karakterine sahip — bkz.
- * WelcomeHeader.tsx'in `header` alanlarını nasıl kullandığı. Widget kartları
- * (theme.ts → yorpasTheme) BİLİNÇLİ OLARAK sabit/açık kalıyor; SAYFA ZEMİNİ
- * (Dashboard.module.scss → .dashboardRoot) pageBackground'dan besleniyor ve
- * sabah/öğle açık, akşam GERÇEKTEN koyu.
- */
-const THEMES: Record<TimeBucket, ITimeTheme> = {
-    morning: {
-        label: 'Fresh Morning',
-        // 08:00-12:00 — berrak, soğuk kurumsal mavi. Neredeyse beyaza yakın
-        // duraklar + belirgin bir gök mavisi durağı ("uyanış" hissi).
-        meshColors: ['#EAF2FC', '#F7FBFF', '#D6E7FA', '#B7D6F3', '#E3EFFB'],
-        text: '#334155',
-        pageBackground: ['#FFFFFF', '#EAF3FC', '#FFFFFF'],
-        header: {
-            // Beyaz/berrak cam — sabahın "temiz sayfa" hissi.
-            glassBackground: 'rgba(255, 255, 255, 0.72)',
-            glassBorder: 'rgba(255, 255, 255, 0.5)',
-            mutedText: '#64748B',
-            nameText: '#0F172A',
-            clockText: '#1E293B',
-            clockSecondsText: 'rgba(30,41,59,0.45)',
-            dateText: 'rgba(51,65,85,0.72)',
-            greetingIcon: 'Sunny',
-            decorationChar: '✦',
-            decorationColor: '#F0A868'
-        },
-        // Berrak gök mavisi — meshColors'taki mavi duraklarla (#D6E7FA/#B7D6F3)
-        // aynı aile, sayfa zeminiyle dokusu birebir örtüşen bir kart tonu.
-        cardAmbient: '#D9EAFB'
+// ÖNCEKİ HATA (birden fazla iterasyon): sabah/öğle/akşam için üç ayrı renk
+// paleti vardı ("Fresh Morning" mavi, "Relax Afternoon" krem, "Evening
+// Corporate" lacivert) — kullanıcı bunu "renkli/dağınık" bulup TEK, sabit bir
+// KURUMSAL tema istedi (referans: Klarinet Velocity — lacivert/beyaz zemin +
+// tek bir vurgu rengi, widget'lara özel renk yok). Bu dosya artık zaman
+// dilimine göre HİÇBİR RENK değiştirmiyor — tek bir CORPORATE_PALETTE var.
+// Zaman dilimi (TimeBucket) sadece WelcomeHeader'daki selamlama METNİNİ
+// ("Günaydın" / "İyi günler" / "İyi akşamlar") ve yanındaki ikonu/süsleme
+// karakterini belirlemek için hâlâ kullanılıyor — bu salt kişiselleştirme
+// amaçlı bir metin/ikon seçimi, bir RENK teması değil.
+const CORPORATE_PALETTE = {
+    // Çok hafif, neredeyse fark edilmeyen mavi-gri mesh — Velocity'nin
+    // sade beyaz zeminine yakın, dikkat dağıtmayan bir doku.
+    meshColors: ['#EEF3FA', '#FAFCFF', '#E6EEF8', '#DCE8F5', '#F2F6FB'] as [string, string, string, string, string],
+    text: '#334155',
+    pageBackground: ['#FFFFFF', '#F5F8FC', '#FFFFFF'] as [string, string, string],
+    header: {
+        glassBackground: 'rgba(255, 255, 255, 0.85)',
+        glassBorder: 'rgba(226, 232, 240, 0.9)',
+        mutedText: '#64748B',
+        nameText: '#0F172A',
+        clockText: '#1E293B',
+        clockSecondsText: 'rgba(30,41,59,0.45)',
+        dateText: 'rgba(51,65,85,0.72)',
+        // Kurumsal marka mavisiyle (yorpasTheme #0078d4) birebir aynı —
+        // widget kartlarındaki ikon rozeti/üst şeritle de aynı ton, tüm
+        // portalda TEK bir vurgu rengi.
+        decorationColor: '#0078D4'
     },
-    day: {
-        label: 'Relax Afternoon',
-        // 12:01-16:00 — ÖNCEKİ HATA: bu palette mavi durakları (EAF2FC,
-        // F7FBFF, D6E7FA) sızıyordu, yani "sabah"tan yeterince ayrışmıyordu.
-        // Artık TAMAMEN sıcak/krem bir aile (mavi durağı YOK) — "relax"
-        // hissi versin diye camın kendisi de krem tonunda (glassBackground),
-        // sabahın beyaz/berrak camından kasıtlı olarak uzak.
-        meshColors: ['#FDF3E1', '#FFFDF8', '#F7E2C2', '#F0D6A8', '#FBEEDA'],
-        text: '#5C4632',
-        pageBackground: ['#FFFEFA', '#F6EDD8', '#FFFFFF'],
+    // Widget kartlarının zemin tonu — sabit, çok hafif mavi-gri bir "wash".
+    cardAmbient: '#EBF1FA'
+};
+
+const GREETING_BY_BUCKET: Record<TimeBucket, { label: string; greetingIcon: string; decorationChar: string }> = {
+    morning: { label: 'Sabah', greetingIcon: 'Sunny', decorationChar: '✦' },
+    day: { label: 'Öğlen', greetingIcon: 'Brightness', decorationChar: '✦' },
+    evening: { label: 'Akşam', greetingIcon: 'ClearNight', decorationChar: '✦' }
+};
+
+const buildTimeTheme = (bucket: TimeBucket): ITimeTheme => {
+    const greeting = GREETING_BY_BUCKET[bucket];
+    return {
+        label: greeting.label,
+        meshColors: CORPORATE_PALETTE.meshColors,
+        text: CORPORATE_PALETTE.text,
+        pageBackground: CORPORATE_PALETTE.pageBackground,
         header: {
-            glassBackground: 'rgba(255, 247, 235, 0.78)',
-            glassBorder: 'rgba(255, 241, 219, 0.55)',
-            mutedText: '#8A6D4E',
-            nameText: '#3E2F20',
-            clockText: '#4A3624',
-            clockSecondsText: 'rgba(74,54,36,0.45)',
-            dateText: 'rgba(90,70,50,0.72)',
-            greetingIcon: 'Coffee',
-            decorationChar: '✴',
-            // ÖNCEKİ HATA: bu ton (#C98A54) sabahın #F0A868'iyle aynı
-            // peach/altın ailesindeydi — widget kartlarındaki ince "mevsim
-            // parıltısı" (bkz. WidgetCard.tsx flairAccent) sabah VE öğlende
-            // neredeyse aynı sarımsı-turuncuya çekiliyor, ikisi ayırt
-            // edilemiyordu ("tuhaf sarı" şikayeti). Artık gerçekten farklı bir
-            // aile: doygun, kırmızıya yakın bir "kavrulmuş turuncu/toprak"
-            // (terracotta) — sabahın soluk altınından belirgin şekilde ayrışır.
-            decorationColor: '#C1652E'
+            ...CORPORATE_PALETTE.header,
+            greetingIcon: greeting.greetingIcon,
+            decorationChar: greeting.decorationChar
         },
-        // Sıcak krem/altın — meshColors'taki #F7E2C2/#F0D6A8 duraklarıyla aynı
-        // aile; sabahın soğuk mavisinden BARİZ şekilde ayrışan, güneşli bir
-        // öğlen molası hissi.
-        cardAmbient: '#F5E2BE'
-    },
-    evening: {
-        label: 'Evening Corporate',
-        // 16:01-07:59 — ÖNCEKİ HATA: burada turuncu→mor→mavi bir "gün batımı"
-        // karışımı vardı; marka mavisiyle alakasız, tutarsız ve "kurumsal"
-        // olmaktan uzak duruyordu. Artık aynı mavi ailenin daha doygun/derin
-        // durakları kullanılıyor. Header'ın camı da artık GERÇEKTEN koyu
-        // lacivert (glassBackground) — sabah/öğlenin aksine beyaz/krem bir
-        // camın altında değil, kendisi karanlık.
-        meshColors: ['#D9E6F7', '#C3D9F2', '#EAF2FC', '#9FBEE6', '#7C9FD4'],
-        text: '#E2E8F0',
-        pageBackground: ['#0B1A2E', '#122A47', '#0B1A2E'],
-        header: {
-            glassBackground: 'rgba(15, 23, 42, 0.82)',
-            glassBorder: 'rgba(148, 163, 184, 0.25)',
-            mutedText: 'rgba(226,232,240,0.65)',
-            nameText: '#FFFFFF',
-            clockText: '#F1F5F9',
-            clockSecondsText: 'rgba(241,245,249,0.5)',
-            dateText: 'rgba(226,232,240,0.68)',
-            greetingIcon: 'ClearNight',
-            decorationChar: '✧',
-            decorationColor: '#9FBEE6'
-        },
-        // Yumuşak "gece laciverti" — sayfanın koyu zemininin (pageBackground)
-        // AÇIK/okunaklı bir yansıması. Kartlar bilinçli olarak koyulaştırılmıyor
-        // (kullanıcı geri bildirimiyle tam koyu widget teması daha önce geri
-        // alınmıştı) ama bu soğuk mavi-gri ton, akşamın "gece mavisi"
-        // kimliğini sabah/öğlenin sıcak tonlarından bariz şekilde ayırıyor.
-        // ÖNEMLİ: sabahın #D9EAFB'sinden (berrak/açık gök mavisi) BİLİNÇLİ
-        // OLARAK daha DOYGUN ve GRİMSİ (#C4D2EA) — aksi halde ikisi de "açık
-        // mavi" olup göz kararında ayırt edilemiyordu.
-        cardAmbient: '#C4D2EA'
-    }
+        cardAmbient: CORPORATE_PALETTE.cardAmbient
+    };
 };
 
 /**
- * 08:00-12:00 Sabah (açık) · 12:01-16:00 Öğlen (relax/ılık) ·
- * 16:01-07:59 Akşam/Gece (koyu, gece yarısını sarar).
+ * 08:00-12:00 Sabah · 12:01-16:00 Öğlen · 16:01-07:59 Akşam/Gece — sadece
+ * selamlama metni/ikonu için, renk paletini ETKİLEMEZ (bkz. üstteki not).
  */
 export const getTimeBucket = (date: Date = new Date()): TimeBucket => {
     const totalMinutes = date.getHours() * 60 + date.getMinutes();
@@ -170,13 +102,13 @@ export const getTimeBucket = (date: Date = new Date()): TimeBucket => {
     return 'evening';
 };
 
-export const getTimeTheme = (bucket: TimeBucket): ITimeTheme => THEMES[bucket];
+export const getTimeTheme = (bucket: TimeBucket): ITimeTheme => buildTimeTheme(bucket);
 
 // SharePoint sayfasındaki başka bir web part'ın kendi CSS değişkenleriyle
 // çakışmasın diye tüm değişken adları bu önekle yazılıyor.
 const CSS_VAR_PREFIX = '--yorpas-theme-';
 
-/** :root üzerine o anki zaman dilimine ait CSS değişkenlerini yazar. */
+/** :root üzerine (sabit) kurumsal tema değişkenlerini yazar. */
 export const applyTimeThemeVariables = (bucket: TimeBucket): void => {
     const theme = getTimeTheme(bucket);
     const root = document.documentElement.style;
@@ -189,9 +121,6 @@ export const applyTimeThemeVariables = (bucket: TimeBucket): void => {
     root.setProperty(`${CSS_VAR_PREFIX}page-bg-1`, theme.pageBackground[0]);
     root.setProperty(`${CSS_VAR_PREFIX}page-bg-2`, theme.pageBackground[1]);
     root.setProperty(`${CSS_VAR_PREFIX}page-bg-3`, theme.pageBackground[2]);
-    // Karşılama header'ının zaman dilimine göre TAMAMEN farklı kimliği —
-    // WelcomeHeader.tsx bu değişkenleri `var(...)` ile okuyup geçişleri
-    // (transition: background/color 1.5s ease) yumuşak hâle getiriyor.
     root.setProperty(`${CSS_VAR_PREFIX}header-glass-bg`, theme.header.glassBackground);
     root.setProperty(`${CSS_VAR_PREFIX}header-glass-border`, theme.header.glassBorder);
     root.setProperty(`${CSS_VAR_PREFIX}header-muted`, theme.header.mutedText);
@@ -203,12 +132,12 @@ export const applyTimeThemeVariables = (bucket: TimeBucket): void => {
 };
 
 /**
- * "ThemeManager" hook'u — bileşen ilk yüklendiğinde VE her dakika (saat
- * başı geçişini kaçırmamak için) o anki zaman dilimini kontrol edip
- * :root CSS değişkenlerini günceller. Değişken adları --yorpas-theme-*
- * öneki taşıdığı için sayfadaki başka bir bileşenle çakışmaz. Bucket
- * gerçekten değişmediği sürece state güncellemesi (ve dolayısıyla
- * yeniden render) TETİKLENMEZ.
+ * "ThemeManager" hook'u — bileşen ilk yüklendiğinde VE her dakika o anki
+ * zaman dilimini (SADECE selamlama metni/ikonu için) kontrol edip :root CSS
+ * değişkenlerini günceller. Renk değerleri sabit olduğu için bucket
+ * değiştiğinde CSS değişkenlerinin GÖRSEL sonucu değişmez, ama
+ * WelcomeHeader'ın "Günaydın/İyi günler/İyi akşamlar" metni bucket state'i
+ * üzerinden güncellenmeye devam eder.
  */
 export const useTimeAwareTheme = (): TimeBucket => {
     const [bucket, setBucket] = React.useState<TimeBucket>(() => getTimeBucket());

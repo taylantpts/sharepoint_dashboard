@@ -31,7 +31,7 @@ const HRPortalCard: React.FunctionComponent = () => {
         },
         icon: {
             fontSize: 32,
-            color: '#9c4f61'
+            color: theme.palette.themePrimary
         },
         text: {
             flexGrow: 1,
@@ -53,7 +53,7 @@ const HRPortalCard: React.FunctionComponent = () => {
             display: 'flex',
             alignItems: 'stretch',
             textDecoration: 'none',
-            background: 'linear-gradient(135deg, #9c4f61 0%, #6e3547 100%)',
+            background: `linear-gradient(135deg, ${theme.palette.themePrimary} 0%, ${theme.palette.themeDark} 100%)`,
             borderRadius: 10,
             overflow: 'hidden',
             boxShadow: '0 4px 14px rgba(0,0,0,0.20)',
@@ -101,7 +101,7 @@ const HRPortalCard: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="İnsan Kaynakları" subtitle="İzin ve bordro bilgileriniz" iconName="Money" accentColor="#9c4f61">
+        <WidgetCard title="İnsan Kaynakları" subtitle="İzin ve bordro bilgileriniz" iconName="Money">
             <div className={styles.banner}>
                 <div className={styles.iconWrap}>
                     <Icon iconName="Suitcase" className={styles.icon} />

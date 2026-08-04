@@ -361,7 +361,6 @@ const ISGCalendarWidget: React.FunctionComponent<IISGCalendarWidgetProps> = ({ c
             title="İSG Takvimi"
             subtitle="Güncel iş sağlığı ve güvenliği takvimi"
             iconName="Shield"
-            accentColor="#c9635c"
             headerAction={canManageISGCalendar && (
                 <IconButton
                     iconProps={{ iconName: 'Add' }}

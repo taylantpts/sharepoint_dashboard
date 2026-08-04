@@ -184,7 +184,7 @@ const CompanyDirectory: React.FunctionComponent<ICompanyDirectoryProps> = (props
     });
 
     return (
-        <WidgetCard title="Şirket Rehberi" subtitle="Kim Kimdir?" iconName="ContactCard" accentColor="#5c8fc4">
+        <WidgetCard title="Şirket Rehberi" subtitle="Kim Kimdir?" iconName="ContactCard">
             <SearchBox
                 placeholder="İsim, departman veya unvan ara..."
                 value={query}

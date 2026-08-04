@@ -443,7 +443,7 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
     });
 
     return (
-        <WidgetCard title="Hava Durumu" subtitle="Anlık konumunuza göre koşullar" iconName="Sunny" accentColor="#5fa8ac">
+        <WidgetCard title="Hava Durumu" subtitle="Anlık konumunuza göre koşullar" iconName="Sunny">
             {state === 'loading' && (
                 <div className={styles.loadingWrap}>
                     <Spinner size={SpinnerSize.medium} label="Konumunuz ve hava durumu alınıyor..." />

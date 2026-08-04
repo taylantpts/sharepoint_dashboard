@@ -225,7 +225,7 @@ const NewsWidget: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="Haberler" subtitle="Ekonomi, teknoloji, sağlık ve daha fazlası" iconName="News" accentColor="#3f6fb0">
+        <WidgetCard title="Haberler" subtitle="Ekonomi, teknoloji, sağlık ve daha fazlası" iconName="News">
             {state === 'loading' && <Spinner size={SpinnerSize.medium} label="Haberler yükleniyor..." />}
             {state === 'error' && <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>}
             {state === 'loaded' && (

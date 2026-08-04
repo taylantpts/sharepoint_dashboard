@@ -106,7 +106,7 @@ const ITSupportCenter: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="BT Destek Merkezi" subtitle="Sorunlarınızı tek tıkla iletin" iconName="Chat" accentColor="#7b8fd4">
+        <WidgetCard title="BT Destek Merkezi" subtitle="Sorunlarınızı tek tıkla iletin" iconName="Chat">
             <div className={styles.banner}>
                 <div className={styles.iconWrap}>
                     <Icon iconName="Chat" className={styles.icon} />

@@ -38,7 +38,7 @@ const MyAssetsCard: React.FunctionComponent = () => {
         },
         icon: {
             fontSize: 32,
-            color: '#6fa87a'
+            color: theme.palette.themePrimary
         },
         text: {
             flexGrow: 1,
@@ -60,7 +60,7 @@ const MyAssetsCard: React.FunctionComponent = () => {
             display: 'flex',
             alignItems: 'stretch',
             textDecoration: 'none',
-            background: 'linear-gradient(135deg, #6fa87a 0%, #3f6a4c 100%)',
+            background: `linear-gradient(135deg, ${theme.palette.themePrimary} 0%, ${theme.palette.themeDark} 100%)`,
             borderRadius: 10,
             overflow: 'hidden',
             boxShadow: '0 4px 14px rgba(0,0,0,0.20)',
@@ -108,7 +108,7 @@ const MyAssetsCard: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="Zimmetlerim" subtitle="Üzerinize kayıtlı cihaz ve envanter" iconName="Devices3" accentColor="#6fa87a">
+        <WidgetCard title="Zimmetlerim" subtitle="Üzerinize kayıtlı cihaz ve envanter" iconName="Devices3">
             <div className={styles.banner}>
                 <div className={styles.iconWrap}>
                     <Icon iconName="Devices3" className={styles.icon} />

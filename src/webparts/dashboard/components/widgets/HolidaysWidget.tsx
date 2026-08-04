@@ -165,7 +165,7 @@ const HolidaysWidget: React.FunctionComponent = () => {
     });
 
     return (
-        <WidgetCard title="Resmi Tatiller" subtitle="Yaklaşan resmi tatiller" iconName="Flag" accentColor="#bb5548">
+        <WidgetCard title="Resmi Tatiller" subtitle="Yaklaşan resmi tatiller" iconName="Flag">
             {state === 'loading' && <Spinner size={SpinnerSize.medium} label="Tatiller yükleniyor..." />}
             {state === 'error' && <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>}
             {state === 'loaded' && holidays.length === 0 && (

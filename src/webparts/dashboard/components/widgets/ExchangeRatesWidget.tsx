@@ -410,7 +410,7 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
     };
 
     return (
-        <WidgetCard title="Döviz & Kıymetli Maden" subtitle="TRY karşılığı güncel kurlar, dokunarak inceleyin" iconName="Bank" accentColor="#2f6f76">
+        <WidgetCard title="Döviz & Kıymetli Maden" subtitle="TRY karşılığı güncel kurlar, dokunarak inceleyin" iconName="Bank">
             {state === 'loading' && <Spinner size={SpinnerSize.medium} label="Kurlar yükleniyor..." />}
             {state === 'error' && <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>}
             {state === 'loaded' && (

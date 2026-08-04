@@ -95,7 +95,6 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                         address="Ofisim İstanbul Plazaları, Cevizli Mah. Tugay Yolu Cad. No:20 A Blok Kat:6 Ofis No:29, 34846 Maltepe/İstanbul, Türkiye"
                         coordinates={{ lat: 40.9183137, lon: 29.1669627 }}
                         iconName="CityNext"
-                        accentColor="#5c8fc4"
                     />
                 </div>
                 <div className={styles.areaLocationFactory}>
@@ -103,7 +102,6 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                         label="Fabrika"
                         address="İnönü Mah. Atatürk Blv. No:19, 41400 Gebze/Kocaeli"
                         iconName="Manufacturing"
-                        accentColor="#6fa87a"
                     />
                 </div>
 

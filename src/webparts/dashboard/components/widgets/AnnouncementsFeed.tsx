@@ -435,7 +435,6 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
             title="Duyurular"
             subtitle="Şirket içi güncel haber akışı"
             iconName="News"
-            accentColor="#c17b4f"
             headerAction={canManageAnnouncements && (
                 <IconButton
                     iconProps={{ iconName: 'Add' }}
