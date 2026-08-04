@@ -60,19 +60,29 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
     // HER bucket için aynı sabit cardAmbient'i döndürüyor (bkz.
     // themeManager.ts), yani bu satırlar kartın rengini zamana göre
     // DEĞİŞTİRMEZ; sadece tek, sabit kurumsal tonu okur.
+    // ÖNCEKİ HATA: kart zemini, mavi vurgu rengiyle karışık görünür bir
+    // gradyandı (accent %14 + cardAmbient %28) — kullanıcı bunu hâlâ "mavi
+    // gradyan" olarak algılayıp minimale çekilmesini istedi. Artık zemin
+    // DÜZ (gradyansız) ve neredeyse beyaz (%6 gibi çok hafif bir "wash") —
+    // "kaliteli/dikkat çekici" hissi artık renkten değil, İNCE detaylardan
+    // geliyor: net bir kenarlık, iki katmanlı yumuşak gölge, ve üst aksan
+    // şeridinin altındaki hafif "ışıma" (glow). Renk sadece üst şeritte ve
+    // ikon rozetinde — tüm kart yüzeyine YAYILMIYOR.
     const timeBucket = useTimeAwareTheme();
     const cardAmbient = getTimeTheme(timeBucket).cardAmbient;
-    const ambientBase = mixHex(cardAmbient, theme.palette.neutralLighterAlt, 0.28);
+    const surface = mixHex(cardAmbient, theme.palette.white, 0.06);
 
     const styles = mergeStyleSets({
         card: {
             position: 'relative',
-            background: `linear-gradient(165deg, ${mixHex(accent, ambientBase, 0.14)} 0%, ${ambientBase} 42%)`,
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            border: 'none',
+            background: surface,
+            border: '1px solid rgba(15,23,42,0.06)',
             borderRadius: 22,
-            boxShadow: '0 8px 24px rgba(15,23,42,0.10)',
+            // İki katmanlı gölge — biri kartın hemen altında ince/keskin
+            // (contact shadow), diğeri daha geniş/yumuşak (ambient shadow).
+            // Tek büyük/bulanık gölge yerine bu ikili, kartın "kalitesini"
+            // asıl belirleyen ince detay: hafif ama net bir yükseklik hissi.
+            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.06)',
             padding: 24,
             display: 'flex',
             flexDirection: 'column',
@@ -85,9 +95,13 @@ const WidgetCard: React.FunctionComponent<IWidgetCardProps> = (props) => {
                     top: 0,
                     left: 14,
                     right: 14,
-                    height: 4,
+                    height: 3,
                     borderRadius: '0 0 4px 4px',
-                    background: `linear-gradient(90deg, ${accent} 0%, ${hexToRgba(accent, 0.5)} 100%)`
+                    background: `linear-gradient(90deg, ${accent} 0%, ${hexToRgba(accent, 0.5)} 100%)`,
+                    // Şeridin altında hafif bir "ışıma" — kartın tamamını
+                    // boyamadan, tek bir ince çizgide dikkat çekici bir
+                    // premium detay.
+                    boxShadow: `0 2px 8px ${hexToRgba(accent, 0.30)}`
                 }
             }
         },
