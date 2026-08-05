@@ -83,11 +83,14 @@
     margin: 32px auto 0;
     max-width: 1400px;
     grid-template-columns: repeat(12, 1fr);
-    /* Duyurular ekranın sol/orta bölümünde GENİŞ bir liste (8/12); Hava
-     * Durumu ondan boşalan alanın karşısında dar/dikey bir kolon (4/12).
-     * Hızlı Erişim, Şirket Rehberi ve Duyurular kendi alanlarında esner. */
+    /* Duyurular ve Hava Durumu artık EŞİT genişlikte iki sütun (6/12 + 6/12,
+     * X ekseninde eşit) — önceki 8/4 asimetrik bölünme, Hava Durumu
+     * detaylandırılıp (saatlik + 5 günlük tahmin) doğal olarak uzayınca dar/
+     * dikey durup orantısız görünüyordu. Y ekseninde (yükseklik) ise BİLİNÇLİ
+     * OLARAK birbirine eşitlenmiyor — bkz. .areaAnnouncements/.areaWeather
+     * altındaki align-self:start. */
     grid-template-areas:
-        'announcements announcements announcements announcements announcements announcements announcements announcements weather weather weather weather'
+        'announcements announcements announcements announcements announcements announcements weather weather weather weather weather weather'
         'quad quad quad quad quad quad quad quad quad quad quad quad'
         'holidays holidays holidays holidays holidays holidays exchange exchange exchange exchange exchange exchange'
         'news news news news news news support support support support support support'
@@ -102,22 +105,21 @@
     align-items: stretch;
 }
 
-/* Duyurular ve Hava Durumu — ÖNCEKİ DENEME (align-self:start) ikisini
- * birbirinden bağımsız/doğal yüksekliğe bıraktı ama bu sefer Hava Durumu
- * (saatlik + 5 günlük tahmin ile) çok uzayınca Duyurular çok kısa kalıp
- * sütunlar hizasız durdu — kullanıcı geri bildirimiyle bu GERİ ALINDI.
- * İkisi de yine .grid'in align-items:stretch'i ile aynı satır yüksekliğine
- * (sütun bazında) hizalanıyor; Duyurular'ın PAGE_SIZE'ı ve satır tasarımı
- * (bkz. AnnouncementsFeed.tsx) bu daha uzun kartı boş görünmeyecek şekilde
- * doldurmak üzere ayrıca güncellendi. */
+/* Duyurular ve Hava Durumu — "hizalama" kullanıcı için X EKSENİ (genişlik,
+ * bkz. yukarıdaki 6/6 grid-template-areas) demek, Y EKSENİ (yükseklik) DEĞİL.
+ * align-self:start ile ikisi de SADECE kendi içeriğinin gerektirdiği
+ * yüksekliği kaplıyor — birbirinin (veya .grid'in align-items:stretch'inin)
+ * yüksekliğine ZORLANMIYOR. */
 .areaWeather {
     grid-area: weather;
     min-width: 0;
+    align-self: start;
 }
 
 .areaAnnouncements {
     grid-area: announcements;
     min-width: 0;
+    align-self: start;
 }
 
 /* Hızlı Erişim + Şirket Rehberi + Yaklaşan Etkinlikler + Kişisel Asistan
