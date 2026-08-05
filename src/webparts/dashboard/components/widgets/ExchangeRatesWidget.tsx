@@ -21,14 +21,30 @@ interface IAssetDef {
     unit: string;
     isMetal?: boolean;
     chartColor: string;
+    /** Sadece Coin sekmesindeki varlıklarda dolu — CoinGecko'daki varlık kimliği. */
+    coingeckoId?: string;
 }
 
-const ASSETS: IAssetDef[] = [
+type PriceMode = 'fiat' | 'crypto';
+
+const FIAT_ASSETS: IAssetDef[] = [
     { code: 'USD', label: 'Dolar', unit: '$', chartColor: '#2f6f76' },
     { code: 'EUR', label: 'Euro', unit: '€', chartColor: '#4a6fa5' },
     { code: 'GBP', label: 'Sterlin', unit: '£', chartColor: '#7b8fd4' },
     { code: 'XAU', label: 'Altın (gr)', unit: '₺/gr', isMetal: true, chartColor: '#c9a227' },
     { code: 'XAG', label: 'Gümüş (gr)', unit: '₺/gr', isMetal: true, chartColor: '#9099a3' }
+];
+
+// CoinGecko — anahtarsız/ücretsiz, TRY karşılığı güncel fiyat + 30 günlük
+// geçmiş grafik (market_chart) aynı API'de. Fiat tarafındaki fxratesapi
+// kripto para desteklemediği için ayrı bir kaynak kullanılıyor; ama veri
+// aynı IAssetData şekline dönüştürülüp AYNI render/grafik kodunu paylaşıyor.
+const CRYPTO_ASSETS: IAssetDef[] = [
+    { code: 'BTC', label: 'Bitcoin', unit: '₺', chartColor: '#f7931a', coingeckoId: 'bitcoin' },
+    { code: 'ETH', label: 'Ethereum', unit: '₺', chartColor: '#627eea', coingeckoId: 'ethereum' },
+    { code: 'BNB', label: 'BNB', unit: '₺', chartColor: '#f0b90b', coingeckoId: 'binancecoin' },
+    { code: 'SOL', label: 'Solana', unit: '₺', chartColor: '#9945ff', coingeckoId: 'solana' },
+    { code: 'XRP', label: 'XRP', unit: '₺', chartColor: '#5c6b7a', coingeckoId: 'ripple' }
 ];
 
 interface ISeriesPoint {
@@ -52,6 +68,11 @@ interface IFxRatesLatestResponse {
 interface IFxRatesTimeseriesResponse {
     success: boolean;
     rates: Record<string, Record<string, number>>;
+}
+
+/** CoinGecko /coins/{id}/market_chart yanıtı — [timestamp(ms), fiyat] çiftleri. */
+interface ICoinGeckoMarketChartResponse {
+    prices: [number, number][];
 }
 
 type LoadState = 'loading' | 'loaded' | 'error';
@@ -99,68 +120,126 @@ const MiniSparkline: React.FunctionComponent<{ points: ISeriesPoint[]; color: st
     );
 };
 
+/** Bir seriden değişim yüzdesi + min/max hesaplayan ortak yardımcı — fiat ve kripto yükleyicileri paylaşıyor. */
+const buildAssetData = (current: number, points: ISeriesPoint[]): IAssetData => {
+    const values = points.map((p) => p.value);
+    const changePct =
+        points.length > 1 ? ((points[points.length - 1].value - points[0].value) / points[0].value) * 100 : undefined;
+    return {
+        current,
+        series: points,
+        changePct,
+        min: values.length ? Math.min(...values) : 0,
+        max: values.length ? Math.max(...values) : 0
+    };
+};
+
 const ExchangeRatesWidget: React.FunctionComponent = () => {
     const theme = useTheme();
+    const [mode, setMode] = React.useState<PriceMode>('fiat');
     const [state, setState] = React.useState<LoadState>('loading');
     const [dataByCode, setDataByCode] = React.useState<Record<string, IAssetData>>({});
     const [selectedCode, setSelectedCode] = React.useState<string>('USD');
     const [hoverIndex, setHoverIndex] = React.useState<number | undefined>(undefined);
 
+    const currentAssets = mode === 'fiat' ? FIAT_ASSETS : CRYPTO_ASSETS;
+
+    // Sekme değiştiğinde (Döviz <-> Coin) seçili varlık, o sekmede hiç
+    // olmayan bir kod olabilir (ör. "BTC" seçiliyken Döviz'e geçmek) — bu
+    // yüzden sekme değiştiğinde seçim, yeni sekmenin ilk varlığına sıfırlanır.
+    React.useEffect(() => {
+        setSelectedCode(currentAssets[0].code);
+    }, [mode]);
+
     React.useEffect(() => {
         let isMounted = true;
-        const codes = ASSETS.map((a) => a.code).join(',');
+        setState('loading');
+
+        const loadFiat = async (): Promise<Record<string, IAssetData>> => {
+            const codes = FIAT_ASSETS.map((a) => a.code).join(',');
+            const today = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - HISTORY_DAYS);
+
+            const [latestResponse, seriesResponse] = await Promise.all([
+                fetch(`https://api.fxratesapi.com/latest?base=TRY&currencies=${codes}`),
+                fetch(
+                    `https://api.fxratesapi.com/timeseries?base=TRY&currencies=${codes}` +
+                        `&start_date=${toIsoDate(startDate)}&end_date=${toIsoDate(today)}`
+                )
+            ]);
+
+            if (!latestResponse.ok || !seriesResponse.ok) {
+                throw new Error(`fxratesapi isteği başarısız (HTTP ${latestResponse.status}/${seriesResponse.status})`);
+            }
+
+            const latest: IFxRatesLatestResponse = await latestResponse.json();
+            const series: IFxRatesTimeseriesResponse = await seriesResponse.json();
+            if (!latest.success || !series.success) {
+                throw new Error('fxratesapi beklenmeyen bir sonuç döndürdü.');
+            }
+
+            const sortedDates = Object.keys(series.rates).sort();
+
+            const next: Record<string, IAssetData> = {};
+            FIAT_ASSETS.forEach((asset) => {
+                const points: ISeriesPoint[] = sortedDates
+                    .filter((d) => series.rates[d][asset.code] !== undefined)
+                    .map((d) => ({ date: d, value: toTryValue(series.rates[d][asset.code], asset.isMetal) }));
+                next[asset.code] = buildAssetData(toTryValue(latest.rates[asset.code], asset.isMetal), points);
+            });
+            return next;
+        };
+
+        const sleep = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+        // ÖNCEKİ HATA #1: 5 coin için /market_chart istekleri Promise.all ile
+        // AYNI ANDA (paralel) atılıyordu — CoinGecko'nun ücretsiz genel API'si
+        // eşzamanlı/art arda çok hızlı istekleri "429 Too Many Requests" ile
+        // reddediyor (canlı testte doğrulandı). Artık istekler SIRALI
+        // atılıyor, aralarına küçük bir gecikme (250ms) konuyor.
+        // ÖNCEKİ HATA #2: "güncel fiyat" için ayrıca /simple/price
+        // çağrılıyordu — bu uç nokta SUNUCUDAN (WebFetch ile) doğru yanıt
+        // verdiği hâlde GERÇEK TARAYICIDAN her zaman "Failed to fetch" ile
+        // sonuçlanıyordu (CORS başlığı eksik/tutarsız — frankfurter.app'te
+        // daha önce yaşanan sorunla AYNI kategori). /market_chart ise
+        // tarayıcıdan sorunsuz çalışıyor; bu yüzden ayrı bir istek atmak
+        // yerine güncel fiyat olarak zaten çekilen serinin SON noktası
+        // kullanılıyor — ekstra istek yok, CORS sorunu da ortadan kalkıyor.
+        const loadCrypto = async (): Promise<Record<string, IAssetData>> => {
+            const charts: ICoinGeckoMarketChartResponse[] = [];
+            for (const asset of CRYPTO_ASSETS) {
+                const chartResponse: Response = await fetch(
+                    `https://api.coingecko.com/api/v3/coins/${asset.coingeckoId}/market_chart?vs_currency=try&days=${HISTORY_DAYS}&interval=daily`
+                );
+                if (!chartResponse.ok) {
+                    throw new Error(`CoinGecko geçmiş fiyat isteği başarısız (${asset.code}, HTTP ${chartResponse.status}).`);
+                }
+                charts.push(await chartResponse.json());
+                await sleep(250);
+            }
+
+            const next: Record<string, IAssetData> = {};
+            CRYPTO_ASSETS.forEach((asset, index) => {
+                const points: ISeriesPoint[] = charts[index].prices.map(([timestamp, value]) => ({
+                    date: new Date(timestamp).toISOString().substring(0, 10),
+                    value
+                }));
+                const currentPrice = points[points.length - 1]?.value ?? 0;
+                next[asset.code] = buildAssetData(currentPrice, points);
+            });
+            return next;
+        };
 
         const load = async (): Promise<void> => {
             try {
-                const today = new Date();
-                const startDate = new Date();
-                startDate.setDate(startDate.getDate() - HISTORY_DAYS);
-
-                const [latestResponse, seriesResponse] = await Promise.all([
-                    fetch(`https://api.fxratesapi.com/latest?base=TRY&currencies=${codes}`),
-                    fetch(
-                        `https://api.fxratesapi.com/timeseries?base=TRY&currencies=${codes}` +
-                            `&start_date=${toIsoDate(startDate)}&end_date=${toIsoDate(today)}`
-                    )
-                ]);
-
-                if (!latestResponse.ok || !seriesResponse.ok) {
-                    throw new Error(`fxratesapi isteği başarısız (HTTP ${latestResponse.status}/${seriesResponse.status})`);
-                }
-
-                const latest: IFxRatesLatestResponse = await latestResponse.json();
-                const series: IFxRatesTimeseriesResponse = await seriesResponse.json();
-                if (!latest.success || !series.success) {
-                    throw new Error('fxratesapi beklenmeyen bir sonuç döndürdü.');
-                }
-
-                const sortedDates = Object.keys(series.rates).sort();
-
-                const next: Record<string, IAssetData> = {};
-                ASSETS.forEach((asset) => {
-                    const points: ISeriesPoint[] = sortedDates
-                        .filter((d) => series.rates[d][asset.code] !== undefined)
-                        .map((d) => ({ date: d, value: toTryValue(series.rates[d][asset.code], asset.isMetal) }));
-
-                    const values = points.map((p) => p.value);
-                    const changePct =
-                        points.length > 1 ? ((points[points.length - 1].value - points[0].value) / points[0].value) * 100 : undefined;
-
-                    next[asset.code] = {
-                        current: toTryValue(latest.rates[asset.code], asset.isMetal),
-                        series: points,
-                        changePct,
-                        min: values.length ? Math.min(...values) : 0,
-                        max: values.length ? Math.max(...values) : 0
-                    };
-                });
-
+                const next = mode === 'fiat' ? await loadFiat() : await loadCrypto();
                 if (isMounted) {
                     setDataByCode(next);
                     setState('loaded');
                 }
             } catch (error) {
-                console.error('[ExchangeRatesWidget] Döviz/kıymetli maden kurları alınamadı:', error);
+                console.error('[ExchangeRatesWidget] Döviz/kıymetli maden/coin kurları alınamadı:', error);
                 if (isMounted) {
                     setState('error');
                 }
@@ -172,7 +251,7 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [mode]);
 
     // Varlık değiştiğinde önceki hover durumu anlamsız kalır (farklı bir
     // seriye ait bir indeksi işaret ediyor olabilir).
@@ -181,6 +260,32 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
     }, [selectedCode]);
 
     const styles = mergeStyleSets({
+        // Üstte "Döviz" / "Coin" segmentli geçiş — aynı widget içinde iki
+        // farklı veri kaynağı (fxratesapi / CoinGecko) arasında geçiş.
+        modeToggleRow: {
+            display: 'flex',
+            background: theme.palette.neutralLighterAlt,
+            borderRadius: 10,
+            padding: 3,
+            marginBottom: 16
+        },
+        modeButton: {
+            flexGrow: 1,
+            border: 'none',
+            background: 'transparent',
+            borderRadius: 8,
+            padding: '8px 0',
+            fontSize: 13,
+            fontWeight: 600,
+            color: theme.semanticColors.bodySubtext,
+            cursor: 'pointer',
+            transition: 'background 0.15s ease, color 0.15s ease'
+        },
+        modeButtonActive: {
+            background: theme.palette.white,
+            color: theme.palette.themePrimary,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.12)'
+        },
         tileRow: {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',
@@ -346,7 +451,7 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
         }
     });
 
-    const selectedAsset = ASSETS.filter((a) => a.code === selectedCode)[0];
+    const selectedAsset = currentAssets.filter((a) => a.code === selectedCode)[0];
     const selectedData = dataByCode[selectedCode];
 
     const handleChartMouseMove = (event: React.MouseEvent<HTMLDivElement>, pointCount: number): void => {
@@ -410,13 +515,33 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
     };
 
     return (
-        <WidgetCard title="Döviz & Kıymetli Maden" subtitle="TRY karşılığı güncel kurlar, dokunarak inceleyin" iconName="Bank">
+        <WidgetCard
+            title={mode === 'fiat' ? 'Döviz & Kıymetli Maden' : 'Kripto Para'}
+            subtitle="TRY karşılığı güncel kurlar, dokunarak inceleyin"
+            iconName="Bank"
+        >
+            <div className={styles.modeToggleRow}>
+                <button
+                    type="button"
+                    className={`${styles.modeButton} ${mode === 'fiat' ? styles.modeButtonActive : ''}`}
+                    onClick={() => setMode('fiat')}
+                >
+                    Döviz
+                </button>
+                <button
+                    type="button"
+                    className={`${styles.modeButton} ${mode === 'crypto' ? styles.modeButtonActive : ''}`}
+                    onClick={() => setMode('crypto')}
+                >
+                    Coin
+                </button>
+            </div>
             {state === 'loading' && <Spinner size={SpinnerSize.medium} label="Kurlar yükleniyor..." />}
             {state === 'error' && <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>}
             {state === 'loaded' && (
                 <>
                     <div className={styles.tileRow}>
-                        {ASSETS.map((asset) => {
+                        {currentAssets.map((asset) => {
                             const assetData = dataByCode[asset.code];
                             const isSelected = asset.code === selectedCode;
                             return (
