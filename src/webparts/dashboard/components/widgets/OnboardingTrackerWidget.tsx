@@ -90,8 +90,11 @@ const dateFieldStyles: Partial<ITextFieldStyles> = {
         }
     },
     field: { padding: '0 16px', fontSize: 14, lineHeight: '34px' },
+    // ÖNCEKİ HATA: bkz. UpcomingEvents.tsx'teki aynı düzeltme — Fluent'in
+    // varsayılan <Label> "padding: 5px 0" taşıyor, marginBottom override'ı
+    // bunu sıfırlamıyor, bu da Tarih/Saat kutularının hizasını bozuyordu.
     subComponentStyles: {
-        label: { root: { marginBottom: 8 } }
+        label: { root: { marginBottom: 8, padding: 0 } }
     }
 };
 

@@ -88,8 +88,13 @@ const dateFieldStyles: Partial<ITextFieldStyles> = {
         }
     },
     field: { padding: '0 16px', fontSize: 14, lineHeight: '34px' },
+    // ÖNCEKİ HATA: Fluent'in varsayılan <Label> bileşeni kendi "padding: 5px 0"
+    // stilini taşıyor (marginBottom:8 override'ı bunu SIFIRLAMIYOR) — bu da
+    // DatePicker'ın "Tarih" etiketini yandaki "Saat" etiketinden (padding'i
+    // olmayan sade bir <label>) 10px daha uzun yapıp altındaki kutuyu 10px
+    // aşağı itiyordu, Tarih/Saat kutuları aynı satırda hizasız görünüyordu.
     subComponentStyles: {
-        label: { root: { marginBottom: 8 } }
+        label: { root: { marginBottom: 8, padding: 0 } }
     }
 };
 
