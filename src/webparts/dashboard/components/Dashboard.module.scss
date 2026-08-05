@@ -93,6 +93,7 @@
         'news news news news news news support support support support support support'
         'hr hr hr hr hr hr assets assets assets assets assets assets'
         'documents documents documents documents documents documents isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar'
+        'recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers'
         'onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding'
         'locationOffice locationOffice locationOffice locationOffice locationOffice locationOffice locationFactory locationFactory locationFactory locationFactory locationFactory locationFactory'
         'feedback feedback feedback feedback feedback feedback feedback feedback feedback feedback feedback feedback';
@@ -201,6 +202,19 @@
     min-width: 0;
 }
 
+/* Aramıza Katılanlar / Aramızdan Ayrılanlar — herkese açık, salt-okunur
+ * "son 5 kişi" özetleri; Katılış & Ayrılış Takibi'nin (areaOnboarding)
+ * hemen üstünde, yan yana iki sütun. */
+.areaRecentJoiners {
+    grid-area: recentJoiners;
+    min-width: 0;
+}
+
+.areaRecentLeavers {
+    grid-area: recentLeavers;
+    min-width: 0;
+}
+
 /* ---------------------------------------------------------------------
  * RESPONSIVE KIRILMA NOKTALARI
  * Masaüstü (>=1024px): yukarıdaki geniş 12 sütunlu Bento Grid (varsayılan).
@@ -220,6 +234,7 @@
             'news support'
             'hr assets'
             'documents isgCalendar'
+            'recentJoiners recentLeavers'
             'onboarding onboarding'
             'locationOffice locationFactory'
             'feedback feedback';
@@ -249,6 +264,8 @@
             'assets'
             'documents'
             'isgCalendar'
+            'recentJoiners'
+            'recentLeavers'
             'onboarding'
             'locationOffice'
             'locationFactory'

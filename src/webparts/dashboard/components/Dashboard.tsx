@@ -22,6 +22,7 @@ import NewsWidget from './widgets/NewsWidget';
 import ISGCalendarWidget from './widgets/ISGCalendarWidget';
 import BirthdaysWidget from './widgets/BirthdaysWidget';
 import OnboardingTrackerWidget from './widgets/OnboardingTrackerWidget';
+import RecentOnboardingWidget from './widgets/RecentOnboardingWidget';
 
 const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
     return (
@@ -89,6 +90,26 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                 </div>
                 <div className={styles.areaISGCalendar}>
                     <ISGCalendarWidget context={props.context} />
+                </div>
+                <div className={styles.areaRecentJoiners}>
+                    <RecentOnboardingWidget
+                        context={props.context}
+                        kind="katilis"
+                        title="Aramıza Katılanlar"
+                        subtitle="Son katılan 5 çalışan"
+                        iconName="AddFriend"
+                        emptyHint="Henüz görüntülenecek katılış kaydı bulunmuyor."
+                    />
+                </div>
+                <div className={styles.areaRecentLeavers}>
+                    <RecentOnboardingWidget
+                        context={props.context}
+                        kind="ayrilis"
+                        title="Aramızdan Ayrılanlar"
+                        subtitle="Son ayrılan 5 çalışan"
+                        iconName="UserRemove"
+                        emptyHint="Henüz görüntülenecek ayrılış kaydı bulunmuyor."
+                    />
                 </div>
                 <div className={styles.areaOnboarding}>
                     <OnboardingTrackerWidget context={props.context} />

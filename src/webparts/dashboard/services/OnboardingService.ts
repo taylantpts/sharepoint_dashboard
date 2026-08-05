@@ -110,6 +110,36 @@ const toDateLabel = (iso?: string): string => {
     return `${match[3]}.${match[2]}.${match[1]}`;
 };
 
+const mapListItem = (
+    kind: OnboardingKind,
+    checklist: { internalName: string; label: string }[],
+    item: ISPItem
+): IOnboardingRecord => {
+    // Ayrılışlar listesinde "Ayrılan Personel" temiz görünen ad, "Title"
+    // ise "AD SOYAD / jira-linki" gibi karışık — bu yüzden varsa o
+    // önceliklidir. Katılışta ise çalışan adı doğrudan Title'da.
+    const name = kind === 'ayrilis'
+        ? (item.Ayr_x0131_lanPersonel as string) || (item.Title as string) || ''
+        : (item.Title as string) || '';
+
+    return {
+        id: item.Id as number,
+        name,
+        title: kind === 'katilis' ? (item.Unvan as string) : undefined,
+        manager: kind === 'katilis' ? (item.Y_x00f6_netici as string) : undefined,
+        location: kind === 'katilis' ? (item.Lokasyon as string) : (item.Completeby as string),
+        dateLabel: toDateLabel(item.Completedon as string | undefined),
+        transfer: item.Devir as string | undefined,
+        status: (item.Durum as string) || '',
+        description: kind === 'katilis' ? (item.A_x00e7__x0131_klama as string | undefined) : undefined,
+        checklist: checklist.map((field) => ({
+            internalName: field.internalName,
+            label: field.label,
+            done: !!item[field.internalName]
+        }))
+    };
+};
+
 export const getOnboardingRecords = async (context: WebPartContext, kind: OnboardingKind): Promise<IOnboardingRecord[]> => {
     const { siteUrl, listTitle, checklist } = getListConfig(kind);
     const endpoint = `${siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$top=2000&$orderby=Completedon desc`;
@@ -122,32 +152,31 @@ export const getOnboardingRecords = async (context: WebPartContext, kind: Onboar
     }
 
     const body: { value: ISPItem[] } = await response.json();
+    return (body.value ?? []).map((item) => mapListItem(kind, checklist, item));
+};
 
-    return (body.value ?? []).map((item) => {
-        // Ayrılışlar listesinde "Ayrılan Personel" temiz görünen ad, "Title"
-        // ise "AD SOYAD / jira-linki" gibi karışık — bu yüzden varsa o
-        // önceliklidir. Katılışta ise çalışan adı doğrudan Title'da.
-        const name = kind === 'ayrilis'
-            ? (item.Ayr_x0131_lanPersonel as string) || (item.Title as string) || ''
-            : (item.Title as string) || '';
+/**
+ * Herkese açık, izin gerektirmeyen "son N kişi" widget'ları (Aramıza
+ * Katılanlar / Aramızdan Ayrılanlar) için — tüm listeyi çekmek yerine
+ * $top ile sunucu tarafında sadece son N kaydı ister.
+ */
+export const getRecentOnboardingRecords = async (
+    context: WebPartContext,
+    kind: OnboardingKind,
+    count: number = 5
+): Promise<IOnboardingRecord[]> => {
+    const { siteUrl, listTitle, checklist } = getListConfig(kind);
+    const endpoint = `${siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$top=${count}&$orderby=Completedon desc`;
 
-        return {
-            id: item.Id as number,
-            name,
-            title: kind === 'katilis' ? (item.Unvan as string) : undefined,
-            manager: kind === 'katilis' ? (item.Y_x00f6_netici as string) : undefined,
-            location: kind === 'katilis' ? (item.Lokasyon as string) : (item.Completeby as string),
-            dateLabel: toDateLabel(item.Completedon as string | undefined),
-            transfer: item.Devir as string | undefined,
-            status: (item.Durum as string) || '',
-            description: kind === 'katilis' ? (item.A_x00e7__x0131_klama as string | undefined) : undefined,
-            checklist: checklist.map((field) => ({
-                internalName: field.internalName,
-                label: field.label,
-                done: !!item[field.internalName]
-            }))
-        };
-    });
+    const response: SPHttpClientResponse = await context.spHttpClient.get(endpoint, SPHttpClient.configurations.v1);
+    if (!response.ok) {
+        const detail = await extractSPErrorDetail(response);
+        console.error(`[OnboardingService] "${listTitle}" listesi (son kayıtlar) okunamadı (${siteUrl}) — ${detail}`);
+        throw new Error(`"${listTitle}" listesi okunamadı (${detail})`);
+    }
+
+    const body: { value: ISPItem[] } = await response.json();
+    return (body.value ?? []).map((item) => mapListItem(kind, checklist, item));
 };
 
 /** Hedef sitenin KENDİ form digest'ini alır — cross-site POST için SPHttpClient bunu otomatik yapmaz. */
