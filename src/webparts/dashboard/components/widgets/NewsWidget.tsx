@@ -55,6 +55,15 @@ interface IRss2JsonItem {
     pubDate: string;
     thumbnail?: string;
     description?: string;
+    /**
+     * NTV'nin RSS akışında "thumbnail" neredeyse HER ZAMAN boş string geliyor
+     * ve "description" da görsel içermiyor (sadece kısa özet metni) — asıl
+     * kapak görseli rss2json'un ayrıca döndürdüğü bu "content" alanının
+     * (tam HTML gövdesi) içine gömülü. ÖNCEKİ HATA tam olarak buydu: kod
+     * sadece thumbnail/description'a bakıyordu, content hiç kontrol
+     * edilmiyordu — bu yüzden neredeyse hiçbir haberde görsel çıkmıyordu.
+     */
+    content?: string;
 }
 
 interface IRss2JsonResponse {
@@ -131,7 +140,7 @@ const NewsWidget: React.FunctionComponent = () => {
                         title: decodeHtmlEntities(stripHtml(item.title)),
                         link: item.link,
                         dateLabel: new Date(item.pubDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
-                        thumbnail: item.thumbnail || extractFirstImageUrl(item.description) || undefined,
+                        thumbnail: item.thumbnail || extractFirstImageUrl(item.content) || extractFirstImageUrl(item.description) || undefined,
                         category: category.label,
                         pubDate: item.pubDate
                     }));
