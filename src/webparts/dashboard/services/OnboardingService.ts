@@ -56,7 +56,12 @@ const KATILIS_CHECKLIST_FIELDS: { internalName: string; label: string }[] = [
     { internalName: 'Email', label: 'E-Posta' },
     { internalName: 'ENVANTEREGIRILDIMI', label: 'Envanter' },
     { internalName: 'Tablet', label: 'Tablet' },
-    { internalName: 'ERPHesap', label: 'ERP Hesabı' }
+    { internalName: 'ERPHesap', label: 'ERP Hesabı' },
+    // Muhasebe grubu için — bu üç sütun kullanıcı isteğiyle doğrudan
+    // "Çalışan katılışı" listesine (Boolean alan) eklendi.
+    { internalName: 'Bordro_x0020_Sistemi', label: 'Bordro Sistemi' },
+    { internalName: 'Banka_x0020_Hesab_x0131_', label: 'Banka Hesabı' },
+    { internalName: 'Muhasebe_x0020_Kayd_x0131_', label: 'Muhasebe Kaydı' }
 ];
 
 const AYRILIS_CHECKLIST_FIELDS: { internalName: string; label: string }[] = [
@@ -74,6 +79,9 @@ const getListConfig = (kind: OnboardingKind): { siteUrl: string; listTitle: stri
     kind === 'katilis'
         ? { siteUrl: KATILIS_SITE_URL, listTitle: KATILIS_LIST_TITLE, checklist: KATILIS_CHECKLIST_FIELDS }
         : { siteUrl: AYRILIS_SITE_URL, listTitle: AYRILIS_LIST_TITLE, checklist: AYRILIS_CHECKLIST_FIELDS };
+
+/** Yönetici kullanıcı aramasının hangi site koleksiyonuna karşı yapılacağını widget'a verir. */
+export const getOnboardingSiteUrl = (kind: OnboardingKind): string => getListConfig(kind).siteUrl;
 
 const extractSPErrorDetail = async (response: SPHttpClientResponse): Promise<string> => {
     try {
@@ -179,6 +187,71 @@ export const getRecentOnboardingRecords = async (
     return (body.value ?? []).map((item) => mapListItem(kind, checklist, item));
 };
 
+export interface IOrgUser {
+    displayName: string;
+    email: string;
+}
+
+/**
+ * "Yönetici" alanı SharePoint listesinde düz metin (Text) — gerçek bir
+ * Person alanına çevirmek liste şemasını değiştirmeyi gerektirir. Bunun
+ * yerine kullanıcı deneyimini iyileştirmek için: SharePoint'in tenant
+ * genelindeki kullanıcı dizininde (Azure AD) arama yapan standart
+ * ClientPeoplePickerWebServiceInterface'i kullanıyoruz, kullanıcı seçince
+ * sadece görünen adını metin olarak Y_x00f6_netici alanına yazıyoruz.
+ */
+export const searchOrgUsers = async (context: WebPartContext, siteUrl: string, queryText: string): Promise<IOrgUser[]> => {
+    if (!queryText.trim()) {
+        return [];
+    }
+    try {
+        const digest = await getRequestDigest(context, siteUrl);
+        const endpoint = `${siteUrl}/_api/SP.UI.ApplicationPages.ClientPeoplePickerWebServiceInterface.clientPeoplePickerSearchUser`;
+        // NOT: context.spHttpClient.post bu uç noktada tutarlı biçimde HTTP 400
+        // döndürüyordu (muhtemelen odata=verbose gövdesini kendi istek
+        // ardışık düzeninde başka türlü işlemesinden) — aynı çağrı ham fetch
+        // ile (tarayıcının zaten mevcut SharePoint oturum çerezleriyle)
+        // sorunsuz çalışıyor, bu yüzden burada ona geri dönüldü.
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json;odata=nometadata',
+                'Content-type': 'application/json;odata=verbose',
+                'X-RequestDigest': digest
+            },
+            body: JSON.stringify({
+                queryParams: {
+                    '__metadata': { type: 'SP.UI.ApplicationPages.ClientPeoplePickerQueryParameters' },
+                    AllowEmailAddresses: true,
+                    AllowMultipleEntities: false,
+                    MaximumEntitySuggestions: 8,
+                    PrincipalSource: 15,
+                    PrincipalType: 1,
+                    QueryString: queryText
+                }
+            })
+        });
+        if (!response.ok) {
+            return [];
+        }
+        const body: { value: string } = await response.json();
+        const parsed = JSON.parse(body.value) as { DisplayText: string; EntityData?: { Email?: string } }[];
+        return parsed.map((entity) => ({
+            // ÖNCEKİ HATA: DisplayText genelde "Ad Soyad | ŞUBE-KODU" şeklinde
+            // geliyor (ör. "Taylan TOPTAŞ | BITECH") — bu uzun metin hem
+            // seçim rozetinde (chip) X butonuyla çakışıp ismi yarım
+            // gösteriyordu, hem de "Yönetici" metin alanına gereksiz bir
+            // şube kodu yazıyordu. Sadece " | " öncesini (temiz adı) alıyoruz.
+            displayName: entity.DisplayText.split(' | ')[0].trim(),
+            email: entity.EntityData?.Email ?? ''
+        }));
+    } catch (error) {
+        console.error('[OnboardingService] Kullanıcı araması başarısız:', error);
+        return [];
+    }
+};
+
 /** Hedef sitenin KENDİ form digest'ini alır — cross-site POST için SPHttpClient bunu otomatik yapmaz. */
 const getRequestDigest = async (context: WebPartContext, siteUrl: string): Promise<string> => {
     const response = await context.spHttpClient.post(`${siteUrl}/_api/contextinfo`, SPHttpClient.configurations.v1, {
@@ -212,7 +285,7 @@ export const createOnboardingRecord = async (
     kind: OnboardingKind,
     input: INewOnboardingInput
 ): Promise<IOnboardingSubmitResult> => {
-    const { siteUrl, listTitle } = getListConfig(kind);
+    const { siteUrl, listTitle, checklist } = getListConfig(kind);
     const endpoint = `${siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items`;
 
     try {
@@ -224,6 +297,13 @@ export const createOnboardingRecord = async (
             Devir: input.transfer,
             Durum: 'DEVAM EDİYOR'
         };
+        // ÖNCEKİ HATA: checklist alanları (Bilgisayar, Telefon, E-Posta, ...)
+        // hiç gönderilmiyordu — bu sütunların SharePoint'teki varsayılan
+        // değeri "Evet" olduğu için yeni kayıt hep TAMAMEN İŞARETLİ
+        // görünüyordu. Artık hepsi açıkça false gönderiliyor.
+        checklist.forEach((field) => {
+            fields[field.internalName] = false;
+        });
         if (kind === 'katilis') {
             fields.Unvan = input.title ?? '';
             fields.Y_x00f6_netici = input.manager ?? '';
@@ -293,6 +373,39 @@ export const updateOnboardingRecord = async (
         return { success: true };
     } catch (error) {
         console.error('[OnboardingService] Kayıt güncellenirken beklenmeyen hata:', error);
+        return { success: false, errorMessage: (error as Error).message };
+    }
+};
+
+/** Bir kaydı kalıcı olarak siler — SADECE İK grubu için (bkz. usePermissions.canManageOnboarding). */
+export const deleteOnboardingRecord = async (
+    context: WebPartContext,
+    kind: OnboardingKind,
+    itemId: number
+): Promise<IOnboardingSubmitResult> => {
+    const { siteUrl, listTitle } = getListConfig(kind);
+    const endpoint = `${siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items(${itemId})`;
+
+    try {
+        const digest = await getRequestDigest(context, siteUrl);
+
+        const response = await context.spHttpClient.post(endpoint, SPHttpClient.configurations.v1, {
+            headers: {
+                Accept: 'application/json;odata=nometadata',
+                'X-RequestDigest': digest,
+                'IF-MATCH': '*',
+                'X-HTTP-Method': 'DELETE'
+            }
+        });
+
+        if (!response.ok) {
+            const detail = await extractSPErrorDetail(response);
+            console.error(`[OnboardingService] "${listTitle}" öğesi (${itemId}) silinemedi — ${detail}`);
+            return { success: false, errorMessage: detail };
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('[OnboardingService] Kayıt silinirken beklenmeyen hata:', error);
         return { success: false, errorMessage: (error as Error).message };
     }
 };

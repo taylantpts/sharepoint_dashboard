@@ -120,6 +120,16 @@
     grid-area: announcements;
     min-width: 0;
     align-self: start;
+    // Artık iki kart barındırıyor (Duyurular + Yaklaşan Etkinlikler) — bir
+    // sütun gibi alt alta dizilsinler diye flex column.
+    display: flex;
+    flex-direction: column;
+}
+
+// Duyurular'ın hemen altında, ikisi arasında Bento grid'in genel boşluğuyla
+// (32px) aynı ritmi koruyan bir aralık.
+.stackedBelow {
+    margin-top: 32px;
 }
 
 /* Hızlı Erişim + Şirket Rehberi + Yaklaşan Etkinlikler + Kişisel Asistan

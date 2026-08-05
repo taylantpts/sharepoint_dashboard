@@ -1,7 +1,8 @@
 import * as React from 'react';
 import {
     IconButton, Spinner, SpinnerSize, MessageBar, MessageBarType, TextField, PrimaryButton,
-    DefaultButton, Dialog, DialogType, DialogFooter, DatePicker, DayOfWeek, Checkbox, Dropdown, IDropdownOption,
+    DefaultButton, Dialog, DialogType, DialogFooter, DatePicker, DayOfWeek, Checkbox, Dropdown, IDropdownOption, IDropdownStyles,
+    NormalPeoplePicker, IPersonaProps, IBasePickerSuggestionsProps, IPickerItemProps, Label,
     useTheme, mergeStyleSets, ITextFieldStyles
 } from '@fluentui/react';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
@@ -10,7 +11,8 @@ import DetailModal from '../DetailModal';
 import { usePermissions } from '../../hooks/usePermissions';
 import { DATA_UNAVAILABLE_MESSAGE, SUBMIT_UNAVAILABLE_MESSAGE } from '../../constants';
 import {
-    getOnboardingRecords, createOnboardingRecord, updateOnboardingRecord,
+    getOnboardingRecords, createOnboardingRecord, updateOnboardingRecord, deleteOnboardingRecord,
+    searchOrgUsers, getOnboardingSiteUrl,
     OnboardingKind, IOnboardingRecord, IChecklistItem
 } from '../../services/OnboardingService';
 
@@ -70,6 +72,53 @@ const inputFieldStyles: Partial<ITextFieldStyles> = {
     }
 };
 
+// ÖNCEKİ HATA: Dropdown'lar sadece `{ root: { marginBottom: 16 } }` ile
+// stilleniyordu — bu, Fluent'in VARSAYILAN (düz, gölgesiz, farklı yükseklikte)
+// kutu görünümünü bırakıyordu ve TextField'ların (inputFieldStyles) yumuşak/
+// gölgeli/yuvarlak kutularının yanında hizasız/asimetrik duruyordu ("kaymalar
+// oluyor, simetrik durmuyor" geri bildirimi buradan geliyordu). Artık
+// TextField ile BİREBİR aynı görsel dili (yükseklik, kenarlık, gölge, radius)
+// paylaşıyor.
+const pickerFieldStyles: Partial<IDropdownStyles> = {
+    root: { marginBottom: 16 },
+    dropdown: { minHeight: 36 },
+    title: {
+        height: 36,
+        lineHeight: '34px',
+        fontSize: 14,
+        padding: '0 12px',
+        background: '#F8FAFC',
+        border: '1px solid #CBD5E1',
+        borderRadius: 12,
+        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.05)'
+    },
+    caretDownWrapper: { height: 36, lineHeight: '36px', right: 10 },
+    label: { marginBottom: 8, fontSize: 14, fontWeight: 600 }
+};
+
+const PEOPLE_PICKER_SUGGESTIONS_PROPS: IBasePickerSuggestionsProps = {
+    suggestionsHeaderText: 'Önerilen kişiler',
+    noResultsFoundText: 'Sonuç bulunamadı',
+    loadingText: 'Aranıyor...'
+};
+
+// TextField/Dropdown ile aynı "yumuşak kutu" görünümü — NormalPeoplePicker'ın
+// giriş kapsayıcısı stil anahtarı `text`, `input` değil.
+const peoplePickerStyles = {
+    root: { marginBottom: 16 },
+    text: {
+        minHeight: 36,
+        background: '#F8FAFC',
+        border: '1px solid #CBD5E1',
+        borderRadius: 12,
+        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.05)',
+        selectors: {
+            '&::after': { borderRadius: 12, border: '2px solid #3B82F6' }
+        }
+    },
+    input: { fontSize: 14 }
+};
+
 const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetProps> = (props) => {
     const { context } = props;
     const theme = useTheme();
@@ -83,7 +132,7 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
     const [isAddOpen, setIsAddOpen] = React.useState(false);
     const [newName, setNewName] = React.useState('');
     const [newTitle, setNewTitle] = React.useState('');
-    const [newManager, setNewManager] = React.useState('');
+    const [managerPersonas, setManagerPersonas] = React.useState<IPersonaProps[]>([]);
     const [newLocation, setNewLocation] = React.useState<string>('Maltepe Ofis');
     const [newDate, setNewDate] = React.useState<Date | undefined>(undefined);
     const [newTransfer, setNewTransfer] = React.useState<string>('Hayır');
@@ -122,11 +171,14 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
         };
     }, [kind, loadRecords]);
 
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
+    const [deleteState, setDeleteState] = React.useState<SubmitState>('idle');
+
     const closeAddModal = (): void => {
         setIsAddOpen(false);
         setNewName('');
         setNewTitle('');
-        setNewManager('');
+        setManagerPersonas([]);
         setNewLocation('Maltepe Ofis');
         setNewDate(undefined);
         setNewTransfer('Hayır');
@@ -145,7 +197,7 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
             const result = await createOnboardingRecord(context, kind, {
                 name: newName.trim(),
                 title: newTitle.trim(),
-                manager: newManager.trim(),
+                manager: managerPersonas[0]?.text?.trim() ?? '',
                 location: newLocation,
                 date: newDate,
                 transfer: newTransfer,
@@ -169,11 +221,15 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
         setEditChecklist(record.checklist.map((c) => ({ ...c })));
         setEditStatus(record.status || 'DEVAM EDİYOR');
         setEditState('idle');
+        setIsDeleteConfirmOpen(false);
+        setDeleteState('idle');
     };
 
     const closeEdit = (): void => {
         setSelected(undefined);
         setEditState('idle');
+        setIsDeleteConfirmOpen(false);
+        setDeleteState('idle');
     };
 
     const handleEditSave = async (): Promise<void> => {
@@ -191,6 +247,24 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
             }
         } catch {
             setEditState('error');
+        }
+    };
+
+    const handleDeleteConfirm = async (): Promise<void> => {
+        if (!selected) {
+            return;
+        }
+        setDeleteState('sending');
+        try {
+            const result = await deleteOnboardingRecord(context, kind, selected.id);
+            if (result.success) {
+                closeEdit();
+                loadRecords(kind);
+            } else {
+                setDeleteState('error');
+            }
+        } catch {
+            setDeleteState('error');
         }
     };
 
@@ -241,8 +315,13 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                 ':hover': { background: theme.palette.neutralLighterAlt }
             }
         },
-        colName: { flex: '1 1 220px', minWidth: 0, fontSize: 13, fontWeight: 600, color: theme.semanticColors.bodyText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-        colSub: { flex: '1 1 200px', minWidth: 0, fontSize: 12, color: theme.semanticColors.bodySubtext, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+        colName: { flex: '1 1 180px', minWidth: 0, fontSize: 13, fontWeight: 600, color: theme.semanticColors.bodyText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+        colSub: { flex: '1 1 160px', minWidth: 0, fontSize: 12, color: theme.semanticColors.bodySubtext, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+        // Katılışta Unvan ve Yönetici artık AYRI iki sütun (önceden tek
+        // sütunda " · " ile birleştiriliyordu — "unvan ile yönetici tek
+        // sütunda durmasın" geri bildirimi buradan geldi).
+        colTitle: { flex: '1 1 140px', minWidth: 0, fontSize: 12, color: theme.semanticColors.bodySubtext, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+        colManager: { flex: '1 1 150px', minWidth: 0, fontSize: 12, color: theme.semanticColors.bodySubtext, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
         colLocation: { flex: '0 0 130px', fontSize: 12 },
         colDate: { flex: '0 0 100px', fontSize: 12, color: theme.semanticColors.bodySubtext },
         colStatus: { flex: '0 0 130px' },
@@ -283,6 +362,57 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
         formRowItem: { flexGrow: 1, minWidth: 0, marginRight: 14 },
         formActions: { display: 'flex', justifyContent: 'flex-end' },
         cancelButton: { marginRight: 12 },
+        pickerFieldWrap: { marginBottom: 0 },
+        // ÖNCEKİ HATA: Fluent'in varsayılan seçili-kişi rozeti (PersonaTag) bu
+        // render ortamında ismi bulanık/okunaksız bir "dilim" haline
+        // getiriyordu (muhtemelen dahili bir yükseklik/line-height
+        // çakışması — bu projede daha önce de -webkit-line-clamp benzer
+        // şekilde bozulmuştu). Fluent'in kendi etiket bileşenini tamamen
+        // atlayıp kendi sade rozetimizi çiziyoruz (bkz. renderManagerChip).
+        managerChip: {
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px 8px 4px 4px',
+            background: theme.palette.neutralLighterAlt,
+            border: `1px solid ${theme.palette.neutralLight}`,
+            borderRadius: 20
+        },
+        managerChipAvatar: {
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: theme.palette.themePrimary,
+            color: '#ffffff',
+            fontSize: 10,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+            flexShrink: 0
+        },
+        managerChipName: {
+            fontSize: 13,
+            color: theme.semanticColors.bodyText,
+            marginRight: 6,
+            whiteSpace: 'nowrap'
+        },
+        managerChipRemove: {
+            width: 20,
+            height: 20,
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            color: theme.semanticColors.bodySubtext,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            flexShrink: 0,
+            selectors: {
+                ':hover': { color: theme.semanticColors.bodyText }
+            }
+        },
         checklistGrid: {
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -293,6 +423,31 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
             fontSize: 12,
             color: theme.semanticColors.bodySubtext,
             marginBottom: 16
+        },
+        // Sil, Kaydet/Vazgeç grubunun ("sol taraf") KARŞISINDA — DialogFooter'ın
+        // varsayılan "hepsi sağa yaslı, bitişik" düzeni yerine, iki grup
+        // arasında net bir boşluk (space-between) olacak şekilde. Böylece
+        // yıkıcı işlem (Sil), birincil işlemlerden (Kaydet/Vazgeç) görsel
+        // olarak da ayrışıyor — "yan yana sıkışık durmasın" geri bildirimi.
+        editFooterRow: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%'
+        },
+        editFooterPrimaryGroup: {
+            display: 'flex',
+            alignItems: 'center'
+        },
+        footerSaveButton: {
+            marginRight: 8
+        },
+        deleteButton: {
+            color: '#B91C1C',
+            border: '1px solid #FCA5A5',
+            selectors: {
+                ':hover': { color: '#991B1B', background: '#FEF2F2', border: '1px solid #FCA5A5' }
+            }
         }
     });
 
@@ -342,7 +497,14 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                 <>
                     <div className={styles.headerRow}>
                         <span className={`${styles.colName} ${styles.headerLabel}`}>{kind === 'katilis' ? 'Çalışan' : 'Ayrılan Personel'}</span>
-                        <span className={`${styles.colSub} ${styles.headerLabel}`}>{kind === 'katilis' ? 'Unvan / Yönetici' : 'Devir mi?'}</span>
+                        {kind === 'katilis' ? (
+                            <>
+                                <span className={`${styles.colTitle} ${styles.headerLabel}`}>Unvan</span>
+                                <span className={`${styles.colManager} ${styles.headerLabel}`}>Yönetici</span>
+                            </>
+                        ) : (
+                            <span className={`${styles.colSub} ${styles.headerLabel}`}>Devir mi?</span>
+                        )}
                         <span className={`${styles.colLocation} ${styles.headerLabel}`}>Lokasyon</span>
                         <span className={`${styles.colDate} ${styles.headerLabel}`}>Tarih</span>
                         <span className={`${styles.colStatus} ${styles.headerLabel}`}>Durum</span>
@@ -351,9 +513,14 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                     {pagedRecords.map((record) => (
                         <div key={record.id} className={styles.row}>
                             <span className={styles.colName}>{record.name}</span>
-                            <span className={styles.colSub}>
-                                {kind === 'katilis' ? [record.title, record.manager].filter(Boolean).join(' · ') : record.transfer}
-                            </span>
+                            {kind === 'katilis' ? (
+                                <>
+                                    <span className={styles.colTitle}>{record.title || '—'}</span>
+                                    <span className={styles.colManager}>{record.manager || '—'}</span>
+                                </>
+                            ) : (
+                                <span className={styles.colSub}>{record.transfer}</span>
+                            )}
                             <span className={styles.colLocation}><span className={styles.locationBadge}>{record.location || '—'}</span></span>
                             <span className={styles.colDate}>{record.dateLabel}</span>
                             <span className={styles.colStatus}>
@@ -418,13 +585,42 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                                 disabled={submitState === 'sending'}
                                 styles={inputFieldStyles}
                             />
-                            <TextField
-                                label="Yönetici"
-                                value={newManager}
-                                onChange={(_, v) => setNewManager(v ?? '')}
-                                disabled={submitState === 'sending'}
-                                styles={inputFieldStyles}
-                            />
+                            <div className={styles.pickerFieldWrap}>
+                                <Label styles={{ root: { marginBottom: 8, fontSize: 14, fontWeight: 600 } }}>Yönetici</Label>
+                                <NormalPeoplePicker
+                                    inputProps={{ placeholder: 'İsim yazıp seçin...' }}
+                                    onResolveSuggestions={(filterText) => (
+                                        filterText
+                                            ? searchOrgUsers(context, getOnboardingSiteUrl('katilis'), filterText)
+                                                .then((users) => users.map((u): IPersonaProps => ({ text: u.displayName, secondaryText: u.email })))
+                                            : []
+                                    )}
+                                    pickerSuggestionsProps={PEOPLE_PICKER_SUGGESTIONS_PROPS}
+                                    selectedItems={managerPersonas}
+                                    onChange={(items) => setManagerPersonas(items ? items.slice(-1) : [])}
+                                    onRenderItem={(itemProps: IPickerItemProps<IPersonaProps>) => {
+                                        const name = itemProps.item.text ?? '';
+                                        const initials = name.split(' ').filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+                                        return (
+                                            <div key={itemProps.key} className={styles.managerChip}>
+                                                <span className={styles.managerChipAvatar}>{initials}</span>
+                                                <span className={styles.managerChipName}>{name}</span>
+                                                <button
+                                                    type="button"
+                                                    className={styles.managerChipRemove}
+                                                    aria-label="Yöneticiyi kaldır"
+                                                    onClick={() => itemProps.onRemoveItem && itemProps.onRemoveItem()}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        );
+                                    }}
+                                    itemLimit={1}
+                                    disabled={submitState === 'sending'}
+                                    styles={peoplePickerStyles}
+                                />
+                            </div>
                         </>
                     )}
                     <div className={styles.formRow}>
@@ -435,7 +631,7 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                                 options={LOCATION_OPTIONS}
                                 onChange={(_, option) => option && setNewLocation(option.key as string)}
                                 disabled={submitState === 'sending'}
-                                styles={{ root: { marginBottom: 16 } }}
+                                styles={pickerFieldStyles}
                             />
                         </div>
                         <div className={styles.formRowItem} style={{ marginRight: 0 }}>
@@ -445,7 +641,7 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                                 options={TRANSFER_OPTIONS}
                                 onChange={(_, option) => option && setNewTransfer(option.key as string)}
                                 disabled={submitState === 'sending'}
-                                styles={{ root: { marginBottom: 16 } }}
+                                styles={pickerFieldStyles}
                             />
                         </div>
                     </div>
@@ -522,15 +718,53 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                     options={STATUS_OPTIONS}
                     onChange={(_, option) => option && setEditStatus(option.key as string)}
                     disabled={editState === 'sending'}
-                    styles={{ root: { marginBottom: 8 } }}
+                    styles={pickerFieldStyles}
                 />
                 <DialogFooter>
                     {editState === 'sending' ? (
                         <Spinner size={SpinnerSize.small} label="Kaydediliyor..." />
                     ) : (
+                        <div className={styles.editFooterRow}>
+                            <div className={styles.editFooterPrimaryGroup}>
+                                <PrimaryButton className={styles.footerSaveButton} text="Kaydet" onClick={() => { handleEditSave().catch(() => { /* handled */ }); }} />
+                                <DefaultButton text="Vazgeç" onClick={closeEdit} />
+                            </div>
+                            {canManageOnboarding && (
+                                <DefaultButton
+                                    text="Sil"
+                                    iconProps={{ iconName: 'Delete' }}
+                                    className={styles.deleteButton}
+                                    onClick={() => setIsDeleteConfirmOpen(true)}
+                                />
+                            )}
+                        </div>
+                    )}
+                </DialogFooter>
+            </Dialog>
+
+            <Dialog
+                hidden={!isDeleteConfirmOpen}
+                onDismiss={() => { setIsDeleteConfirmOpen(false); setDeleteState('idle'); }}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: 'Kayıt silinsin mi?',
+                    subText: `"${selected?.name ?? ''}" kaydı kalıcı olarak silinecek. Bu işlem geri alınamaz.`
+                }}
+            >
+                {deleteState === 'error' && (
+                    <MessageBar messageBarType={MessageBarType.error}>Kayıt silinemedi. Lütfen tekrar deneyin.</MessageBar>
+                )}
+                <DialogFooter>
+                    {deleteState === 'sending' ? (
+                        <Spinner size={SpinnerSize.small} label="Siliniyor..." />
+                    ) : (
                         <>
-                            <PrimaryButton text="Kaydet" onClick={() => { handleEditSave().catch(() => { /* handled */ }); }} />
-                            <DefaultButton text="Vazgeç" onClick={closeEdit} />
+                            <PrimaryButton
+                                text="Evet, Sil"
+                                styles={{ root: { background: '#B91C1C', border: 'none' }, rootHovered: { background: '#991B1B' } }}
+                                onClick={() => { handleDeleteConfirm().catch(() => { /* handled in handleDeleteConfirm */ }); }}
+                            />
+                            <DefaultButton text="Vazgeç" onClick={() => { setIsDeleteConfirmOpen(false); setDeleteState('idle'); }} />
                         </>
                     )}
                 </DialogFooter>

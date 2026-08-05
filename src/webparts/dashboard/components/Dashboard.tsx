@@ -32,15 +32,23 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
             </div>
 
             <div className={styles.grid}>
+                {/* Hava Durumu (yanındaki sütun) saatlik + 5 günlük tahminle uzayınca
+                    Duyurular kısa/boş kalıyordu — Yaklaşan Etkinlikler artık quad
+                    grid'ten buraya, Duyurular'ın hemen altına taşındı; bu boşluğu
+                    dolduruyor ve iki sütun daha dengeli görünüyor. */}
                 <div className={styles.areaAnnouncements}>
                     <AnnouncementsFeed context={props.context} />
+                    <div className={styles.stackedBelow}>
+                        <UpcomingEvents context={props.context} />
+                    </div>
                 </div>
                 <div className={styles.areaWeather}>
                     <WeatherWidget apiKey={props.weatherApiKey} />
                 </div>
 
-                {/* Hızlı Erişim/Rehber/Etkinlikler/Asistan artık 4 dar sütun yerine
-                    kendi 2x2 grid'inde ferah biçimde yerleşiyor (bkz. .quadGrid). */}
+                {/* Hızlı Erişim/Rehber/Doğum Günleri/Asistan kendi 2x2 grid'inde
+                    ferah biçimde yerleşiyor (bkz. .quadGrid) — Etkinlikler artık
+                    burada değil, Duyurular sütununa taşındı (yukarı bakın). */}
                 <div className={styles.areaQuad}>
                     <div className={styles.quadGrid}>
                         <div className={styles.quadItem}>
@@ -51,9 +59,6 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                         </div>
                         <div className={styles.quadItem}>
                             <BirthdaysWidget context={props.context} />
-                        </div>
-                        <div className={styles.quadItem}>
-                            <UpcomingEvents context={props.context} />
                         </div>
                         <div className={styles.quadItem}>
                             <PersonalAssistant context={props.context} />
