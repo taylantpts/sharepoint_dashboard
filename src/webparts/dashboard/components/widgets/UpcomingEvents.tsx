@@ -67,6 +67,32 @@ const topLevelFieldStyles: Partial<ITextFieldStyles> = {
     root: { marginBottom: 20 }
 };
 
+// ÖNCEKİ HATA: DatePicker'ın kendi içindeki TextField, inputFieldStyles'ı
+// (fieldGroup: minHeight:36) paylaşıyordu — ama DatePicker'ın takvim ikonu
+// kutuyu Saat alanından (native <input type=time>, height:36 SABİT) daha
+// UZUN büyütüyordu (muhtemelen ikonun kendi doğal yüksekliği + flex
+// stretch), bu da tarih metninin kutunun altına yapışmış görünmesine yol
+// açıyordu ("textbox'ın en altına yapışıyor" geri bildirimi). minHeight
+// yerine SABİT height:36 ile — Saat alanıyla birebir aynı yükseklik ve
+// dikey ortalama.
+const dateFieldStyles: Partial<ITextFieldStyles> = {
+    fieldGroup: {
+        height: 36,
+        minHeight: 36,
+        background: '#F8FAFC',
+        border: '1px solid #CBD5E1',
+        borderRadius: 12,
+        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.05)',
+        selectors: {
+            ':after': { borderRadius: 12, border: '2px solid #3B82F6', boxShadow: '0 0 0 4px rgba(59,130,246,0.15)' }
+        }
+    },
+    field: { padding: '0 16px', fontSize: 14, lineHeight: '34px' },
+    subComponentStyles: {
+        label: { root: { marginBottom: 8 } }
+    }
+};
+
 const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) => {
     const { canManageAnnouncements } = usePermissions(props.context);
     const { context } = props;
@@ -303,6 +329,18 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
         modalLocationIcon: {
             marginRight: 6
         },
+        // ÖNCEKİ HATA: "Etkinlik Detayı" hiç gösterilmiyordu — bkz. dosyanın
+        // başındaki description alanı notu.
+        modalDescription: {
+            fontSize: 14,
+            // ÖNCEKİ HATA: birimsiz (unitless) 1.6 bu render ortamında "1.6px" olarak
+            // hesaplanıyor (birim otomatik ekleniyor) — satırlar neredeyse sıfır
+            // yükseklikte üst üste biniyordu. Yüzde string'i açık birim taşıdığı için
+            // bu hataya düşmüyor (bkz. DetailModal.tsx'teki aynı not).
+            lineHeight: '160%',
+            color: theme.semanticColors.bodyText,
+            marginTop: 12
+        },
         modalImage: {
             width: '100%',
             maxHeight: 220,
@@ -531,6 +569,18 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                                 {selected.location}
                             </div>
                         )}
+                        {selected.description && (
+                            <div className={styles.modalDescription}>
+                                {/* ÖNCEKİ HATA: white-space:pre-wrap ile tek bir <div> içine
+                                    konan çok satırlı metin, bu render ortamında satırları
+                                    üst üste bindiriyordu (\n karakterleri düzgün satır
+                                    sonu üretmiyordu). Her satırı AYRI bir <div> (garanti
+                                    blok düzeyinde) olarak basmak bu sorunu kesin çözüyor. */}
+                                {selected.description.split('\n').map((line, index) => (
+                                    <div key={index}>{line || ' '}</div>
+                                ))}
+                            </div>
+                        )}
                     </>
                 )}
             </DetailModal>
@@ -588,7 +638,7 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                                 strings={DAY_PICKER_STRINGS}
                                 formatDate={(d) => (d ? d.toLocaleDateString('tr-TR') : '')}
                                 disabled={submitState === 'sending'}
-                                textField={{ styles: inputFieldStyles }}
+                                textField={{ styles: dateFieldStyles }}
                             />
                         </div>
                         <div className={styles.formRowItem}>

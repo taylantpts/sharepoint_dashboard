@@ -72,6 +72,29 @@ const inputFieldStyles: Partial<ITextFieldStyles> = {
     }
 };
 
+// ÖNCEKİ HATA: DatePicker'ın kendi içindeki TextField, inputFieldStyles'ı
+// (fieldGroup: minHeight:36) paylaşıyordu — DatePicker'ın takvim ikonu
+// kutuyu diğer TextField'lardan daha UZUN büyütüyor, bu da tarih metninin
+// kutunun altına yapışmış görünmesine yol açıyordu (bkz. UpcomingEvents.tsx
+// içindeki aynı düzeltme). minHeight yerine SABİT height:36.
+const dateFieldStyles: Partial<ITextFieldStyles> = {
+    fieldGroup: {
+        height: 36,
+        minHeight: 36,
+        background: '#F8FAFC',
+        border: '1px solid #CBD5E1',
+        borderRadius: 12,
+        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.05)',
+        selectors: {
+            ':after': { borderRadius: 12, border: '2px solid #3B82F6', boxShadow: '0 0 0 4px rgba(59,130,246,0.15)' }
+        }
+    },
+    field: { padding: '0 16px', fontSize: 14, lineHeight: '34px' },
+    subComponentStyles: {
+        label: { root: { marginBottom: 8 } }
+    }
+};
+
 // ÖNCEKİ HATA: Dropdown'lar sadece `{ root: { marginBottom: 16 } }` ile
 // stilleniyordu — bu, Fluent'in VARSAYILAN (düz, gölgesiz, farklı yükseklikte)
 // kutu görünümünü bırakıyordu ve TextField'ların (inputFieldStyles) yumuşak/
@@ -653,7 +676,7 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
                         strings={DAY_PICKER_STRINGS}
                         formatDate={(d) => (d ? d.toLocaleDateString('tr-TR') : '')}
                         disabled={submitState === 'sending'}
-                        textField={{ styles: inputFieldStyles }}
+                        textField={{ styles: dateFieldStyles }}
                     />
                     {kind === 'katilis' && (
                         <TextField

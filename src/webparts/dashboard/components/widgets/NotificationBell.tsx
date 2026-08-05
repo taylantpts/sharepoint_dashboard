@@ -146,7 +146,9 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
         emptyHint: {
             fontSize: 12,
             color: theme.semanticColors.bodySubtext,
-            lineHeight: 1.5
+            // ÖNCEKİ HATA: birimsiz sayı (1.5) bu render ortamında "1.5px" olarak
+            // hesaplanıyor (bkz. DetailModal.tsx'teki aynı not) — yüzde string'i kullanılıyor.
+            lineHeight: '150%'
         }
     });
 

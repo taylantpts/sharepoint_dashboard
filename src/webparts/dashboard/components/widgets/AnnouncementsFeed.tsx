@@ -271,7 +271,9 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
             fontSize: 15,
             fontWeight: 700,
             color: theme.semanticColors.bodyText,
-            lineHeight: 1.35
+            // ÖNCEKİ HATA: birimsiz sayı (1.35) bu render ortamında "1.35px" olarak
+            // hesaplanıyor (bkz. DetailModal.tsx'teki aynı not) — yüzde string'i kullanılıyor.
+            lineHeight: '135%'
         },
         // Tarih başlığın altında, silik (muted) bir fontla, küçük bir takvim ikonuyla.
         date: {
@@ -306,7 +308,9 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
         },
         modalBody: {
             fontSize: 14,
-            lineHeight: 1.7,
+            // ÖNCEKİ HATA: birimsiz sayı (1.7) bu render ortamında "1.7px" olarak
+            // hesaplanıyor (bkz. DetailModal.tsx'teki aynı not) — yüzde string'i kullanılıyor.
+            lineHeight: '170%',
             color: theme.semanticColors.bodyText,
             // Duyuru zengin metin (rich text) alanından geldiği için temel
             // biçimlendirme (kalın, liste, bağlantı) burada da görünsün.
@@ -430,7 +434,9 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
         },
         deleteConfirmBody: {
             fontSize: 14,
-            lineHeight: 1.6,
+            // ÖNCEKİ HATA: birimsiz sayı (1.6) bu render ortamında "1.6px" olarak
+            // hesaplanıyor (bkz. DetailModal.tsx'teki aynı not) — yüzde string'i kullanılıyor.
+            lineHeight: '160%',
             color: theme.semanticColors.bodyText
         },
         formErrorDetail: {

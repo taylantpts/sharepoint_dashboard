@@ -44,7 +44,12 @@ const DetailModal: React.FunctionComponent<IDetailModalProps> = (props) => {
             fontSize: 22,
             fontWeight: 700,
             color: theme.semanticColors.bodyText,
-            lineHeight: 1.3,
+            // ÖNCEKİ HATA: burada birimsiz (unitless) bir sayı (1.3) kullanılıyordu —
+            // bu render ortamında merge-styles bunu "1.3px" olarak (birim EKLEYEREK)
+            // hesaplıyor, satırın gerçek yüksekliğini neredeyse sıfıra indirip metnin
+            // üst üste binmesine yol açıyor. Yüzde string'i ('130%') açık bir CSS
+            // birimi taşıdığı için bu hataya düşmüyor.
+            lineHeight: '130%',
             marginRight: 16
         },
         // NOT: "gap" burada da kullanılmıyor — iki buton yan yana geldiğinde
@@ -83,7 +88,11 @@ const DetailModal: React.FunctionComponent<IDetailModalProps> = (props) => {
         },
         body: {
             padding: '0 28px 28px',
-            lineHeight: 1.6
+            // ÖNCEKİ HATA: bkz. yukarıdaki "title" notu — aynı birimsiz-sayı hatası.
+            // Bu değer, kendi lineHeight'ını ayrıca belirtmeyen tüm alt bileşenler
+            // (ör. RequiredDocuments) tarafından miras alınıyor, bu yüzden düzeltmek
+            // site genelinde birçok detay modalını etkiliyor.
+            lineHeight: '160%'
         }
     });
 

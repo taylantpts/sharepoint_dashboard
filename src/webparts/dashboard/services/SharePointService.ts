@@ -42,6 +42,13 @@ export interface IUpcomingEventItem {
     timeLabel: string;
     /** Öğeye eklenmiş ilk EK (attachment) dosyasının SharePoint URL'i — yoksa undefined. */
     imageUrl?: string;
+    /**
+     * ÖNCEKİ HATA: "Etkinlik Detayı" formda kaydediliyordu (bkz. createEvent'in
+     * Description alanı) ama bu arayüz hiç bir slot taşımıyordu — kullanıcı
+     * girdiği açıklama sunucuya yazılsa bile hiçbir yerde tekrar
+     * GÖSTERİLMİYORDU. Artık okunuyor (bkz. getUpcomingEvents).
+     */
+    description?: string;
 }
 
 // Liste adları — tenant'taki gerçek SharePoint listeleriyle birebir eşleşmeli.
@@ -465,7 +472,8 @@ export const getUpcomingEvents = async (context: WebPartContext): Promise<IUpcom
             monthShort: TURKISH_MONTH_SHORT[eventDate.getMonth()],
             day: eventDate.getDate(),
             timeLabel: eventDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            imageUrl: imageUrls[index]
+            imageUrl: imageUrls[index],
+            description: (item.Description as string) || undefined
         };
     });
 };

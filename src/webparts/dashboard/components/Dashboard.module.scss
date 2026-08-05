@@ -105,21 +105,22 @@
     align-items: stretch;
 }
 
-/* Duyurular ve Hava Durumu — "hizalama" kullanıcı için X EKSENİ (genişlik,
- * bkz. yukarıdaki 6/6 grid-template-areas) demek, Y EKSENİ (yükseklik) DEĞİL.
- * align-self:start ile ikisi de SADECE kendi içeriğinin gerektirdiği
- * yüksekliği kaplıyor — birbirinin (veya .grid'in align-items:stretch'inin)
- * yüksekliğine ZORLANMIYOR. */
+/* Duyurular ve Hava Durumu — X EKSENİ (genişlik) 6/6 eşit (yukarıdaki
+ * grid-template-areas). Y EKSENİ (yükseklik) için: Yaklaşan Etkinlikler
+ * Duyurular'ın altına taşındıktan SONRA kullanıcı bu sütunun Hava
+ * Durumu'nun toplam yüksekliğine erişmesini istedi ("etkinliğin y
+ * ekseninde boyu kısa kaldı, hava durumuna göre hizala") — bu yüzden
+ * align-self:start GERİ ALINDI, .grid'in align-items:stretch'i tekrar
+ * geçerli. Fazla yükseklik boş bir kartı ŞİŞİRMİYOR — flex column içinde
+ * Yaklaşan Etkinlikler (stackedBelow, flex-grow:1) bu payı alıyor. */
 .areaWeather {
     grid-area: weather;
     min-width: 0;
-    align-self: start;
 }
 
 .areaAnnouncements {
     grid-area: announcements;
     min-width: 0;
-    align-self: start;
     // Artık iki kart barındırıyor (Duyurular + Yaklaşan Etkinlikler) — bir
     // sütun gibi alt alta dizilsinler diye flex column.
     display: flex;
@@ -127,9 +128,12 @@
 }
 
 // Duyurular'ın hemen altında, ikisi arasında Bento grid'in genel boşluğuyla
-// (32px) aynı ritmi koruyan bir aralık.
+// (32px) aynı ritmi koruyan bir aralık — flex-grow:1 ile sütunun geri kalan
+// (Hava Durumu'ndan gelen fazla) yüksekliğini bu kart dolduruyor.
 .stackedBelow {
     margin-top: 32px;
+    flex-grow: 1;
+    display: flex;
 }
 
 /* Hızlı Erişim + Şirket Rehberi + Yaklaşan Etkinlikler + Kişisel Asistan
