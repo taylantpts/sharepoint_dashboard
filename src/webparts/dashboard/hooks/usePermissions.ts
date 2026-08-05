@@ -1,18 +1,24 @@
 import * as React from 'react';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { HR_ADMIN_GROUP_NAME, ISG_GROUP_NAME } from '../constants';
+import { HR_ADMIN_GROUP_NAME, ISG_GROUP_NAME, IT_GROUP_NAME, ACCOUNTING_GROUP_NAME } from '../constants';
 
 export interface IPermissions {
     /** Duyurular ve Etkinlikler listelerine "+" ile içerik ekleyebilir mi. */
     canManageAnnouncements: boolean;
     /** İSG Takvimi'ne yeni dosya yükleyebilir mi. */
     canManageISGCalendar: boolean;
+    /** Katılış/Ayrılış takibinde "+" (yeni kayıt) açabilir mi — SADECE İK. */
+    canManageOnboarding: boolean;
+    /** Katılış/Ayrılış kayıtlarındaki kalem/düzenle ikonunu görebilir mi — İK, BT veya Muhasebe. */
+    canEditOnboarding: boolean;
 }
 
 const DEFAULT_PERMISSIONS: IPermissions = {
     canManageAnnouncements: false,
-    canManageISGCalendar: false
+    canManageISGCalendar: false,
+    canManageOnboarding: false,
+    canEditOnboarding: false
 };
 
 /**
@@ -23,6 +29,14 @@ const DEFAULT_PERMISSIONS: IPermissions = {
  * bu gruplara verilen liste-bazlı Katılım (Contribute) izniyle sağlanır.
  * Grup bulunamazsa (istek hatası, grup üyeliği yok) güvenli taraf seçilir:
  * buton hiç gösterilmez.
+ *
+ * NOT (Katılış/Ayrılış için önemli): grup üyeliği her zaman bu widget'ın
+ * BARINDIĞI portal sitesinden (context.pageContext.web) okunur — Katılış/
+ * Ayrılış listelerinin GERÇEKTE yaşadığı uzak sitelerden (YazilimTeknoloji /
+ * Turquality-BilgiTeknolojileri) DEĞİL. Yani "BT Personeli" ve "Muhasebe
+ * Personeli" gruplarının da (İK ve İSG grupları gibi) bu PORTAL sitesinde
+ * oluşturulmuş olması gerekir — buton görünürlüğü buradan belirlenir, uzak
+ * listelerdeki GERÇEK yazma izni ise o sitelerin kendi izin yapısına bağlıdır.
  */
 export const usePermissions = (context: WebPartContext): IPermissions => {
     const [permissions, setPermissions] = React.useState<IPermissions>(DEFAULT_PERMISSIONS);
@@ -43,11 +57,16 @@ export const usePermissions = (context: WebPartContext): IPermissions => {
 
                 const body: { value: { Title: string }[] } = await response.json();
                 const groupTitles = (body.value ?? []).map((g) => g.Title);
+                const isHr = groupTitles.indexOf(HR_ADMIN_GROUP_NAME) !== -1;
+                const isIt = groupTitles.indexOf(IT_GROUP_NAME) !== -1;
+                const isAccounting = groupTitles.indexOf(ACCOUNTING_GROUP_NAME) !== -1;
 
                 if (isMounted) {
                     setPermissions({
-                        canManageAnnouncements: groupTitles.indexOf(HR_ADMIN_GROUP_NAME) !== -1,
-                        canManageISGCalendar: groupTitles.indexOf(ISG_GROUP_NAME) !== -1
+                        canManageAnnouncements: isHr,
+                        canManageISGCalendar: groupTitles.indexOf(ISG_GROUP_NAME) !== -1,
+                        canManageOnboarding: isHr,
+                        canEditOnboarding: isHr || isIt || isAccounting
                     });
                 }
             } catch (error) {

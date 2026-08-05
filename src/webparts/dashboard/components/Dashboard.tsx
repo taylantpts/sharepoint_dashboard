@@ -21,6 +21,7 @@ import ExchangeRatesWidget from './widgets/ExchangeRatesWidget';
 import NewsWidget from './widgets/NewsWidget';
 import ISGCalendarWidget from './widgets/ISGCalendarWidget';
 import BirthdaysWidget from './widgets/BirthdaysWidget';
+import OnboardingTrackerWidget from './widgets/OnboardingTrackerWidget';
 
 const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
     return (
@@ -89,6 +90,10 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                 <div className={styles.areaISGCalendar}>
                     <ISGCalendarWidget context={props.context} />
                 </div>
+                <div className={styles.areaOnboarding}>
+                    <OnboardingTrackerWidget context={props.context} />
+                </div>
+
                 <div className={styles.areaLocationOffice}>
                     <LocationCard
                         label="Merkez Ofis"

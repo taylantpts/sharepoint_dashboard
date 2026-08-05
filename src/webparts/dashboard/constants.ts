@@ -16,3 +16,15 @@ export const HR_ADMIN_GROUP_NAME = 'İK ve İdari İşler Personeli';
  * klasöründe bu gruba Katılım (Contribute) izni verilmiştir.
  */
 export const ISG_GROUP_NAME = 'İSG Personeli';
+
+/**
+ * Katılış/Ayrılış takibinde güncelleme yapabilecek ek gruplar — BT ve
+ * Muhasebe. Kullanıcı isteğine göre: "+" (yeni kayıt açma) SADECE
+ * HR_ADMIN_GROUP_NAME'e özel kalıyor (bkz. OnboardingTrackerWidget.tsx),
+ * ama satırdaki kalem/düzenle ikonu HR_ADMIN_GROUP_NAME + IT_GROUP_NAME +
+ * ACCOUNTING_GROUP_NAME üçüne birden açık.
+ */
+export const IT_GROUP_NAME = 'BT Personeli';
+
+/** Katılış/Ayrılış kayıtlarını düzenleyebilecek Muhasebe grubunun adı. */
+export const ACCOUNTING_GROUP_NAME = 'Muhasebe Personeli';
