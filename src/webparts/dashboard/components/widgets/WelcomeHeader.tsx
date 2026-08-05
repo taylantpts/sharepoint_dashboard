@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Icon, Persona, PersonaSize, mergeStyleSets, keyframes } from '@fluentui/react';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { useTimeAwareTheme, getTimeTheme } from '../../themeManager';
+import NotificationBell from './NotificationBell';
 
 export interface IWelcomeHeaderProps {
     userDisplayName: string;
@@ -94,6 +95,38 @@ const getClockParts = (): { main: string; seconds: string } => {
     return { main, seconds };
 };
 
+interface IHeaderClockProps {
+    clockRowClassName: string;
+    clockMainClassName: string;
+    clockSecondsClassName: string;
+}
+
+/**
+ * Saat, saniyede bir kendi state'ini güncellemesi gereken TEK parça —
+ * bu yüzden ayrı bir bileşene çıkarıldı. Önceden bu tik WelcomeHeader'ın
+ * kendi state'indeydi; bu da mergeStyleSets ile üretilen ~30 kuralı (7
+ * CSS keyframe animasyonu dahil) SANİYEDE BİR yeniden hesaplatıyor ve
+ * arkadaki mesh gradyanı animasyonunun sürekli kesilip yeniden
+ * başlamasına ("kasma") yol açıyordu. Artık sadece bu küçük alt bileşen
+ * saniyede bir render oluyor, header'ın geri kalanı (ve ağır stil/
+ * animasyon katmanları) saat tikinden tamamen etkilenmiyor.
+ */
+const HeaderClock: React.FunctionComponent<IHeaderClockProps> = (props) => {
+    const [clock, setClock] = React.useState(getClockParts());
+
+    React.useEffect(() => {
+        const interval = window.setInterval(() => setClock(getClockParts()), 1000);
+        return () => window.clearInterval(interval);
+    }, []);
+
+    return (
+        <div className={props.clockRowClassName}>
+            <span className={props.clockMainClassName}>{clock.main}</span>
+            <span className={props.clockSecondsClassName}>:{clock.seconds}</span>
+        </div>
+    );
+};
+
 /** Saate göre "Günaydın / İyi günler / İyi akşamlar" — motivasyon sözü değil, sade bir kişiselleştirme. */
 const getGreetingPrefix = (bucket: string): string => {
     if (bucket === 'morning') { return 'Günaydın'; }
@@ -114,14 +147,8 @@ const getGreetingPrefix = (bucket: string): string => {
 const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
     const { userDisplayName, context } = props;
     const firstName = getFirstName(userDisplayName);
-    const [clock, setClock] = React.useState(getClockParts());
     const timeBucket = useTimeAwareTheme();
     const headerVariant = getTimeTheme(timeBucket).header;
-
-    React.useEffect(() => {
-        const interval = window.setInterval(() => setClock(getClockParts()), 1000);
-        return () => window.clearInterval(interval);
-    }, []);
 
     // Kullanıcının kendi profil fotoğrafı — Graph izni/onay beklemeye gerek
     // kalmadan, her SharePoint sitesinde hazır bulunan userphoto.aspx sistem
@@ -133,7 +160,13 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
         ? `${context.pageContext.web.absoluteUrl}/_layouts/15/userphoto.aspx?size=L&accountname=${encodeURIComponent(loginName)}`
         : undefined;
 
-    const styles = mergeStyleSets({
+    // headerVariant (dolayısıyla timeBucket) DIŞINDA hiçbir şeye bağlı değil —
+    // useMemo olmadan bu obje HER render'da (ör. üst bileşenin re-render'ında)
+    // yeniden kurulur ve mergeStyleSets'in ürettiği class adları değişebilir,
+    // bu da üzerlerindeki CSS animasyonlarının sıfırdan yeniden başlamasına
+    // (görsel "kasma") yol açar. Artık sadece dakikada bir zaman dilimi
+    // değiştiğinde yeniden hesaplanıyor.
+    const styles = React.useMemo(() => mergeStyleSets({
         root: {
             position: 'relative',
             overflow: 'hidden',
@@ -445,8 +478,18 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
         },
         dateTextIcon: {
             marginRight: 6
+        },
+        // Zil + saat/tarih bloğu yan yana — NOT: "gap" burada da kullanılmıyor,
+        // zil kendi marginRight'ını taşıyor.
+        topRightRow: {
+            display: 'flex',
+            alignItems: 'flex-start'
+        },
+        notificationBellWrap: {
+            marginRight: 16,
+            marginTop: 2
         }
-    });
+    }), [headerVariant]);
 
     return (
         <div className={styles.root}>
@@ -477,14 +520,20 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
                         </p>
                     </div>
                 </div>
-                <div className={styles.dateTimeBlock}>
-                    <div className={styles.clockRow}>
-                        <span className={styles.clockMain}>{clock.main}</span>
-                        <span className={styles.clockSeconds}>:{clock.seconds}</span>
+                <div className={styles.topRightRow}>
+                    <div className={styles.notificationBellWrap}>
+                        <NotificationBell context={context} />
                     </div>
-                    <div className={styles.dateText}>
-                        <Icon iconName="Calendar" className={styles.dateTextIcon} />
-                        {getTodayLabel()}
+                    <div className={styles.dateTimeBlock}>
+                        <HeaderClock
+                            clockRowClassName={styles.clockRow}
+                            clockMainClassName={styles.clockMain}
+                            clockSecondsClassName={styles.clockSeconds}
+                        />
+                        <div className={styles.dateText}>
+                            <Icon iconName="Calendar" className={styles.dateTextIcon} />
+                            {getTodayLabel()}
+                        </div>
                     </div>
                 </div>
             </div>

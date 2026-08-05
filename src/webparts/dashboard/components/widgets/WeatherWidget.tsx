@@ -17,6 +17,12 @@ interface IForecastDay {
     variant: WeatherCondition;
 }
 
+interface IHourlyForecast {
+    timeLabel: string;
+    tempC: number;
+    variant: WeatherCondition;
+}
+
 interface IWeatherData {
     city: string;
     tempC: number;
@@ -25,12 +31,14 @@ interface IWeatherData {
     variant: WeatherCondition;
     humidity: number;
     windKmh: number;
+    pressureHpa: number;
     forecast: IForecastDay[];
+    hourly: IHourlyForecast[];
 }
 
 interface IOpenWeatherResponse {
     weather?: Array<{ description: string; icon: string }>;
-    main?: { temp: number; feels_like: number; humidity: number };
+    main?: { temp: number; feels_like: number; humidity: number; pressure: number };
     wind?: { speed: number };
     name?: string;
     cod?: number | string;
@@ -120,6 +128,24 @@ const buildDailyForecast = (entries: IOpenWeatherForecastEntry[]): IForecastDay[
         });
 };
 
+/**
+ * Bugünün KALAN saatleri — buildDailyForecast bunları bilerek dışlıyor
+ * (günlük özet bugünü hiç göstermiyordu). Aynı ham "5 day / 3 hour" liste
+ * üzerinden, sadece bugüne ait kayıtları saat etiketiyle birlikte döner —
+ * ekstra bir API isteği gerekmez.
+ */
+const buildTodayHourly = (entries: IOpenWeatherForecastEntry[]): IHourlyForecast[] => {
+    const todayKey = new Date().toISOString().substring(0, 10);
+    return entries
+        .filter((entry) => entry.dt_txt.substring(0, 10) === todayKey)
+        .slice(0, 6)
+        .map((entry) => ({
+            timeLabel: entry.dt_txt.substring(11, 16),
+            tempC: Math.round(entry.main.temp),
+            variant: mapOwmIconToCondition(entry.weather[0]?.icon ?? '01d')
+        }));
+};
+
 type LoadState = 'loading' | 'loaded' | 'error' | 'missingKey';
 
 export interface IWeatherWidgetProps {
@@ -184,12 +210,14 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
                 // ulaşılamıyor" hatasına düşüyordu, anlık durum çoktan
                 // alınmış olsa bile.
                 let forecast: IForecastDay[] = [];
+                let hourly: IHourlyForecast[] = [];
                 try {
                     const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=tr`;
                     const forecastResponse = await fetch(forecastUrl);
                     if (forecastResponse.ok) {
                         const forecastData: IOpenWeatherForecastResponse = await forecastResponse.json();
                         forecast = buildDailyForecast(forecastData.list ?? []);
+                        hourly = buildTodayHourly(forecastData.list ?? []);
                     } else {
                         console.error('[WeatherWidget] Haftalık tahmin alınamadı:', forecastResponse.status);
                     }
@@ -206,7 +234,9 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
                         variant: mapOwmIconToCondition(conditionInfo.icon),
                         humidity: data.main.humidity,
                         windKmh: Math.round((data.wind?.speed ?? 0) * 3.6),
-                        forecast
+                        pressureHpa: data.main.pressure,
+                        forecast,
+                        hourly
                     });
                     setState('loaded');
                 }
@@ -246,11 +276,12 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
         ? [
             { iconName: 'Drop', label: 'Nem', value: `%${weather.humidity}` },
             { iconName: 'WindDirection', label: 'Rüzgar', value: `${weather.windKmh} km/s` },
-            { iconName: 'Info', label: 'Hissedilen', value: `${weather.feelsLikeC}°C` }
+            { iconName: 'Info', label: 'Hissedilen', value: `${weather.feelsLikeC}°C` },
+            { iconName: 'Gauge', label: 'Basınç', value: `${weather.pressureHpa} hPa` }
         ]
         : [];
 
-    const statColors = ['#0ea5c4', '#4f9d90', '#e08e45'];
+    const statColors = ['#0ea5c4', '#4f9d90', '#e08e45', '#8b6bd1'];
 
     const styles = mergeStyleSets({
         // NOT: "gap" flex özelliği burada BİLİNÇLİ OLARAK KULLANILMIYOR — bu
@@ -349,11 +380,48 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
             gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))',
             gap: 12
         },
+        sectionLabel: {
+            fontSize: 11,
+            fontWeight: 700,
+            color: theme.semanticColors.bodySubtext,
+            textTransform: 'uppercase',
+            letterSpacing: 0.4,
+            marginTop: 18,
+            marginBottom: 8
+        },
+        // Bugünün saatlik tahmini — gün içinde 3-4 taneden fazla kayıt
+        // olabileceği için grid yerine yatay kaydırılabilir bir şerit.
+        hourlyRow: {
+            display: 'flex',
+            overflowX: 'auto',
+            paddingBottom: 2
+        },
+        hourlySlot: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            flexShrink: 0,
+            width: 56,
+            padding: '8px 0'
+        },
+        hourlyTime: {
+            fontSize: 10,
+            fontWeight: 700,
+            color: theme.semanticColors.bodySubtext,
+            marginBottom: 6
+        },
+        hourlyIconWrap: {
+            marginBottom: 6
+        },
+        hourlyTemp: {
+            fontSize: 12,
+            fontWeight: 700,
+            color: theme.semanticColors.bodyText
+        },
         forecastRow: {
             display: 'grid',
             gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: 8,
-            marginTop: 16
+            gap: 8
         },
         // NOT: "gap" flex özelliği burada BİLİNÇLİ OLARAK KULLANILMIYOR — flex
         // "gap" desteklenmiyor. forecastLabel/forecastHigh kendi marginBottom'ını
@@ -491,19 +559,39 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
                         ))}
                     </div>
 
+                    {weather.hourly.length > 0 && (
+                        <>
+                            <div className={styles.sectionLabel}>Bugün Saatlik</div>
+                            <div className={styles.hourlyRow}>
+                                {weather.hourly.map((hour) => (
+                                    <div key={hour.timeLabel} className={styles.hourlySlot}>
+                                        <span className={styles.hourlyTime}>{hour.timeLabel}</span>
+                                        <span className={styles.hourlyIconWrap}>
+                                            <AnimatedWeatherIcon condition={hour.variant} size={24} />
+                                        </span>
+                                        <span className={styles.hourlyTemp}>{hour.tempC}°</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
                     {weather.forecast.length > 0 && (
-                        <div className={styles.forecastRow}>
-                            {weather.forecast.map((day) => (
-                                <div key={day.dayLabel + day.high} className={styles.forecastDay}>
-                                    <span className={styles.forecastLabel}>{day.dayLabel}</span>
-                                    <span className={styles.forecastIconWrap}>
-                                        <AnimatedWeatherIcon condition={day.variant} size={26} />
-                                    </span>
-                                    <span className={styles.forecastHigh}>{day.high}°</span>
-                                    <span className={styles.forecastLow}>{day.low}°</span>
-                                </div>
-                            ))}
-                        </div>
+                        <>
+                            <div className={styles.sectionLabel}>5 Günlük Tahmin</div>
+                            <div className={styles.forecastRow}>
+                                {weather.forecast.map((day) => (
+                                    <div key={day.dayLabel + day.high} className={styles.forecastDay}>
+                                        <span className={styles.forecastLabel}>{day.dayLabel}</span>
+                                        <span className={styles.forecastIconWrap}>
+                                            <AnimatedWeatherIcon condition={day.variant} size={26} />
+                                        </span>
+                                        <span className={styles.forecastHigh}>{day.high}°</span>
+                                        <span className={styles.forecastLow}>{day.low}°</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             )}

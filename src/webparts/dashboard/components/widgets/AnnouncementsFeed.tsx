@@ -21,8 +21,9 @@ type SubmitState = 'idle' | 'sending' | 'error';
 
 // Duyurular ASLA otomatik silinmez (bkz. getAnnouncements) — liste zamanla
 // uzayabileceği için sayfa başına sabit bir adet gösterilip altta ileri/geri
-// oklarıyla gezinilir.
-const PAGE_SIZE = 3;
+// oklarıyla gezinilir. 5: Hava Durumu widget'ıyla aynı satırdaki kartın
+// gereksiz boş/şişkin durmaması için Doğum Günleri ile aynı sayfa boyutu.
+const PAGE_SIZE = 5;
 
 // Form alanlarının ortak "yumuşak" görünümü — hafif gri zemin, ince/zarif
 // kenarlık ve odaklanınca mavi bir halka. Tüm TextField'lar bunu paylaşır.
@@ -186,7 +187,9 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
 
     const styles = mergeStyleSets({
         // Geniş sütuna oturan, dikey haber-akışı tarzı LİSTE — kart/karo
-        // grid'i yerine her duyuru kendi tam genişlikte satırında.
+        // grid'i yerine her duyuru kendi tam genişlikte satırında. İnce alt
+        // çizgilerle (row'daki borderBottom) ayrılıyor, son satırda çizgi yok
+        // (bkz. lastRow) — salt boşluğa güvenmek yerine net bir liste hissi.
         list: {
             display: 'flex',
             flexDirection: 'column'
@@ -198,27 +201,36 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
             display: 'flex',
             alignItems: 'flex-start',
             width: '100%',
-            padding: '14px 12px',
-            marginBottom: 6,
+            padding: '14px 4px',
             border: 'none',
+            borderBottom: `1px solid ${theme.palette.neutralLighter}`,
             borderRadius: 12,
             background: 'transparent',
             cursor: 'pointer',
             textAlign: 'left',
             font: 'inherit',
-            transition: 'background 0.15s ease, box-shadow 0.15s ease',
+            transition: 'background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease',
             selectors: {
                 ':hover': {
                     background: theme.palette.neutralLighterAlt,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                    transform: 'translateX(2px)'
                 }
             }
         },
+        lastRow: {
+            borderBottom: 'none'
+        },
+        // ÖNCEKİ HATA: düz/tek tonlu mavi kare, kartın geri kalanındaki
+        // (WidgetCard başlık ikonu, WidgetCard iconWrap) gradyanlı/gölgeli
+        // rozetlerin yanında yassı ve "ucuz" duruyordu — artık aynı görsel
+        // dili paylaşıyor (gradyan + renkli glow gölgesi).
         iconWrap: {
-            width: 38,
-            height: 38,
-            borderRadius: 10,
-            background: theme.palette.themePrimary,
+            width: 40,
+            height: 40,
+            borderRadius: 11,
+            background: `linear-gradient(135deg, ${theme.palette.themePrimary} 0%, ${theme.palette.themeDarkAlt} 100%)`,
+            boxShadow: `0 4px 10px ${theme.palette.themePrimary}59`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -228,36 +240,50 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
         },
         icon: {
             color: '#ffffff',
-            fontSize: 16
+            fontSize: 17
         },
         // Görseli olan duyurular için: ikon rozeti yerine küçük, köşeleri
         // yuvarlatılmış bir kapak görseli (object-fit: cover — hiçbir zaman
-        // taşmaz/bozulmaz).
+        // taşmaz/bozulmaz), ince bir kenarlık + gölgeyle "yapıştırılmış"
+        // değil "yerleştirilmiş" hissi verir.
         thumb: {
-            width: 52,
-            height: 52,
-            borderRadius: 10,
+            width: 54,
+            height: 54,
+            borderRadius: 11,
             objectFit: 'cover',
             flexShrink: 0,
             marginTop: 2,
-            marginRight: 14
+            marginRight: 14,
+            border: '1px solid rgba(15,23,42,0.06)',
+            boxShadow: '0 2px 6px rgba(15,23,42,0.08)'
         },
         textGroup: {
             minWidth: 0,
-            flexGrow: 1
+            flexGrow: 1,
+            paddingTop: 2
         },
         // Premium isteği: başlıklar daha büyük ve kalın (bold).
+        // NOT: "-webkit-line-clamp" ile iki satıra sınırlama denendi ama bu
+        // render ortamında (flex "gap" desteklemeyen aynı eski/kurumsal
+        // tarayıcı) metni neredeyse görünmez hale getirdi — bu yüzden
+        // sade/normal satır kaydırmaya geri dönüldü.
         title: {
             fontSize: 15,
             fontWeight: 700,
             color: theme.semanticColors.bodyText,
             lineHeight: 1.35
         },
-        // Tarih başlığın altında, silik (muted) bir fontla.
+        // Tarih başlığın altında, silik (muted) bir fontla, küçük bir takvim ikonuyla.
         date: {
+            display: 'flex',
+            alignItems: 'center',
             fontSize: 12,
             color: theme.semanticColors.bodySubtext,
-            marginTop: 4
+            marginTop: 6
+        },
+        dateIcon: {
+            fontSize: 11,
+            marginRight: 5
         },
         emptyHint: {
             fontSize: 12,
@@ -459,8 +485,13 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
             {state === 'loaded' && items.length > 0 && (
                 <>
                     <div className={styles.list}>
-                        {pagedItems.map((a) => (
-                            <button key={a.id} type="button" className={styles.row} onClick={() => setSelected(a)}>
+                        {pagedItems.map((a, index) => (
+                            <button
+                                key={a.id}
+                                type="button"
+                                className={`${styles.row} ${index === pagedItems.length - 1 ? styles.lastRow : ''}`}
+                                onClick={() => setSelected(a)}
+                            >
                                 {/* Görsel varsa küçük kapak resmi, yoksa eski/sade ikon rozeti —
                                     iki durum arasında boşluk veya kırık resim ikonu YOK. */}
                                 {a.imageUrl ? (
@@ -472,7 +503,10 @@ const AnnouncementsFeed: React.FunctionComponent<IAnnouncementsFeedProps> = (pro
                                 )}
                                 <div className={styles.textGroup}>
                                     <div className={styles.title}>{a.title}</div>
-                                    <div className={styles.date}>{a.dateLabel}</div>
+                                    <div className={styles.date}>
+                                        <Icon iconName="Calendar" className={styles.dateIcon} />
+                                        {a.dateLabel}
+                                    </div>
                                 </div>
                             </button>
                         ))}

@@ -102,14 +102,24 @@
     align-items: stretch;
 }
 
+/* Duyurular ve Hava Durumu — ÖNCEKİ HATA: .grid'in align-items:stretch'i bu
+ * ikisini de sırada en uzun olanın (genelde Hava Durumu, tahmin şeridiyle)
+ * yüksekliğine ZORLUYORDU; içeriği kısa kalan taraf (genelde Duyurular)
+ * altta boş/şişkin bir alan olarak görünüyordu ("kutuları ayarla" geri
+ * bildirimi buradan geldi). align-self:start ile ikisi de artık SADECE
+ * kendi içeriğinin gerektirdiği yüksekliği kaplıyor, birbirine zorla
+ * eşitlenmiyor — alttaki kompakt widget'larla (Hızlı Erişim vb.) aynı
+ * "doğal boyut" hissini veriyor. */
 .areaWeather {
     grid-area: weather;
     min-width: 0;
+    align-self: start;
 }
 
 .areaAnnouncements {
     grid-area: announcements;
     min-width: 0;
+    align-self: start;
 }
 
 /* Hızlı Erişim + Şirket Rehberi + Yaklaşan Etkinlikler + Kişisel Asistan
