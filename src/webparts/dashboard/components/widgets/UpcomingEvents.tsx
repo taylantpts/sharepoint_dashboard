@@ -98,6 +98,12 @@ const dateFieldStyles: Partial<ITextFieldStyles> = {
     }
 };
 
+// Kullanıcı isteğiyle: her zaman en yakın 2 etkinlik görünür, yenisi
+// eklenince en uzak (eski) olan otomatik olarak sonraki sayfaya kayar
+// (getUpcomingEvents zaten tarihe göre en yakından en uzağa sıralı
+// döndürüyor) — bkz. AnnouncementsFeed.tsx'teki aynı desen.
+const PAGE_SIZE = 2;
+
 const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) => {
     const { canManageAnnouncements } = usePermissions(props.context);
     const { context } = props;
@@ -106,6 +112,7 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
     const [events, setEvents] = React.useState<IUpcomingEventItem[]>([]);
     const [state, setState] = React.useState<LoadState>('loading');
     const [selected, setSelected] = React.useState<IUpcomingEventItem | undefined>(undefined);
+    const [page, setPage] = React.useState(0);
 
     const [isAddOpen, setIsAddOpen] = React.useState(false);
     const [newTitle, setNewTitle] = React.useState('');
@@ -188,6 +195,7 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
             const result = await createEvent(context, newTitle.trim(), combined, newDescription.trim(), undefined, newImage);
             if (result.success) {
                 closeAddModal();
+                setPage(0);
                 loadEvents();
             } else {
                 setSubmitError(result.errorMessage);
@@ -317,6 +325,24 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
         emptyHint: {
             fontSize: 12,
             color: theme.semanticColors.bodySubtext
+        },
+        // Bkz. AnnouncementsFeed.tsx'teki aynı pagination/paginationPrevButton/
+        // pageLabel deseni — sayfa başına PAGE_SIZE adet + ileri/geri oklar.
+        pagination: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 8
+        },
+        paginationPrevButton: {
+            marginRight: 8
+        },
+        pageLabel: {
+            fontSize: 11,
+            color: theme.semanticColors.bodySubtext,
+            minWidth: 70,
+            textAlign: 'center',
+            marginRight: 8
         },
         modalDate: {
             fontSize: 12,
@@ -526,6 +552,9 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
         }
     });
 
+    const pageCount = Math.max(1, Math.ceil(events.length / PAGE_SIZE));
+    const pagedEvents = events.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
     return (
         <WidgetCard
             title="Yaklaşan Etkinlikler"
@@ -546,21 +575,43 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
                 <Text className={styles.emptyHint}>Yaklaşan bir etkinlik bulunmuyor.</Text>
             )}
             {state === 'loaded' && events.length > 0 && (
-                <div className={styles.list}>
-                    {events.map((ev) => (
-                        <button key={ev.id} type="button" className={styles.row} onClick={() => setSelected(ev)}>
-                            <div className={styles.calendarLeaf}>
-                                <div className={styles.calendarLeafMonth}>{ev.monthShort}</div>
-                                <div className={styles.calendarLeafDay}>{ev.day}</div>
-                            </div>
-                            <div className={styles.detailGroup}>
-                                <div className={styles.eventTitleText}>{ev.title}</div>
-                                <div className={styles.eventTimeText}>{ev.timeLabel}</div>
-                            </div>
-                            <Icon iconName="ChevronRight" className={styles.chevron} />
-                        </button>
-                    ))}
-                </div>
+                <>
+                    <div className={styles.list}>
+                        {pagedEvents.map((ev) => (
+                            <button key={ev.id} type="button" className={styles.row} onClick={() => setSelected(ev)}>
+                                <div className={styles.calendarLeaf}>
+                                    <div className={styles.calendarLeafMonth}>{ev.monthShort}</div>
+                                    <div className={styles.calendarLeafDay}>{ev.day}</div>
+                                </div>
+                                <div className={styles.detailGroup}>
+                                    <div className={styles.eventTitleText}>{ev.title}</div>
+                                    <div className={styles.eventTimeText}>{ev.timeLabel}</div>
+                                </div>
+                                <Icon iconName="ChevronRight" className={styles.chevron} />
+                            </button>
+                        ))}
+                    </div>
+                    {/* Kullanıcı isteğiyle: sayfa başına sabit (PAGE_SIZE) adet + ileri/geri
+                        oklarıyla gezinme — bkz. AnnouncementsFeed.tsx'teki aynı desen. */}
+                    {events.length > PAGE_SIZE && (
+                        <div className={styles.pagination}>
+                            <IconButton
+                                className={styles.paginationPrevButton}
+                                iconProps={{ iconName: 'ChevronLeft' }}
+                                ariaLabel="Önceki sayfa"
+                                disabled={page === 0}
+                                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                            />
+                            <span className={styles.pageLabel}>Sayfa {page + 1} / {pageCount}</span>
+                            <IconButton
+                                iconProps={{ iconName: 'ChevronRight' }}
+                                ariaLabel="Sonraki sayfa"
+                                disabled={page >= pageCount - 1}
+                                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                            />
+                        </div>
+                    )}
+                </>
             )}
 
             <DetailModal

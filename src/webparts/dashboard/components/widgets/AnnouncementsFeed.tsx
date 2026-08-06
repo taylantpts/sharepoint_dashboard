@@ -21,9 +21,10 @@ type SubmitState = 'idle' | 'sending' | 'error';
 
 // Duyurular ASLA otomatik silinmez (bkz. getAnnouncements) — liste zamanla
 // uzayabileceği için sayfa başına sabit bir adet gösterilip altta ileri/geri
-// oklarıyla gezinilir. 5: Hava Durumu widget'ıyla aynı satırdaki kartın
-// gereksiz boş/şişkin durmaması için Doğum Günleri ile aynı sayfa boyutu.
-const PAGE_SIZE = 5;
+// oklarıyla gezinilir. Kullanıcı isteğiyle: her zaman en yeni 2 duyuru
+// görünür, yenisi eklenince eskisi otomatik olarak sonraki sayfaya kayar
+// (getAnnouncements zaten en yeniden en eskiye sıralı döndürüyor).
+const PAGE_SIZE = 2;
 
 // Form alanlarının ortak "yumuşak" görünümü — hafif gri zemin, ince/zarif
 // kenarlık ve odaklanınca mavi bir halka. Tüm TextField'lar bunu paylaşır.
