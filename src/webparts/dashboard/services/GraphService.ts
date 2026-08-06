@@ -174,15 +174,67 @@ const searchDirectoryBasic = async (client: MSGraphClientV3, escapedQuery: strin
     return toDirectoryUsers(response.value ?? []);
 };
 
+/** Bir telefon değerinden (herhangi bir format: "+90 (534) 089 12 18" gibi) sadece rakamları çıkarır. */
+const digitsOnly = (value: string): string => value.replace(/\D/g, '');
+
 /**
- * Graph /users endpoint'inde isim, unvan veya departmana göre arama yapar.
- * Önce accountEnabled + signInActivity (son 15 gün) filtreli GELİŞMİŞ sorgu
- * denenir; bu sorgu tenant'ın izin seviyesine göre (bkz. searchDirectoryAdvanced
- * yorumu) 400/403 ile başarısız olabilir — bu durumda OTOMATİK olarak filtresiz
- * BASİT bir aramaya düşülür, böylece rehber izin yetersizliğinde de tamamen boş
- * kalmaz. Her iki deneme de başarısız olursa hata konsola detaylı basılıp
+ * ÖNCEKİ HATA (iki ayrı deneme, ikisi de canlı ortamda doğrulandı):
+ * 1) $search telefon numaralarını (+90/parantez/boşluk içeren format)
+ *    beklendiği gibi taramıyordu — tam veya kısmi numarayla arama hep
+ *    sonuçsuz kalıyordu.
+ * 2) $filter + contains() "Filter operator 'Contains' is not supported"
+ *    hatası verdi; $filter + startswith() de "Unsupported or invalid query
+ *    filter clause specified for property 'mobilePhone'" hatası verdi —
+ *    yani bu tenant'ta mobilePhone/businessPhones üzerinde HİÇBİR $filter
+ *    işleci desteklenmiyor (Graph'ın platform kısıtı, kod hatası değil).
+ *
+ * Bu yüzden telefon araması SUNUCU TARAFINDA hedefli bir sorguyla mümkün
+ * değil — tek çalışan yol: etkin kullanıcıları çekip (tek istekte en fazla
+ * 999, bu tenant için yeterli) rakamları normalize ederek (boşluk/parantez/
+ * +90 farklarını yok saymak için) İSTEMCİ TARAFINDA eşleştirmek. Sadece
+ * sorgu en az 3 rakam içeriyorsa çalışır (aksi halde boş dize/isim aramaları
+ * için gereksiz yere tüm kullanıcı listesini çekmeyi engeller). EN İYİ ÇABA
+ * (best-effort): bu sorgu kendi hatasını YUTAR — izin eksikliği veya geçici
+ * bir hata, ana isim/departman/unvan aramasının sonucunu ASLA
+ * bozmamalı/gizlememeli.
+ */
+const searchDirectoryByPhone = async (client: MSGraphClientV3, rawQuery: string): Promise<IDirectoryUser[]> => {
+    const queryDigits = digitsOnly(rawQuery);
+    if (queryDigits.length < 3) {
+        return [];
+    }
+    try {
+        const response: { value: IGraphUser[] } = await client
+            .api('/users')
+            .header('ConsistencyLevel', 'eventual')
+            .filter('accountEnabled eq true')
+            .select('id,displayName,jobTitle,department,mail,mobilePhone,businessPhones,onPremisesDistinguishedName')
+            .top(999)
+            .get();
+
+        const matches = (response.value ?? []).filter((u) => {
+            const phones = [u.mobilePhone, ...(u.businessPhones ?? [])].filter((p): p is string => !!p);
+            return phones.some((p) => digitsOnly(p).includes(queryDigits));
+        });
+        return toDirectoryUsers(matches).slice(0, 15);
+    } catch (error) {
+        console.warn('[GraphService] Telefon numarasıyla rehber araması başarısız, yoksayılıyor:', error);
+        return [];
+    }
+};
+
+/**
+ * Graph /users endpoint'inde isim, unvan, departman veya telefon numarasına
+ * göre arama yapar. İsim/unvan/departman için önce accountEnabled +
+ * signInActivity (son 15 gün) filtreli GELİŞMİŞ sorgu denenir; bu sorgu
+ * tenant'ın izin seviyesine göre (bkz. searchDirectoryAdvanced yorumu)
+ * 400/403 ile başarısız olabilir — bu durumda OTOMATİK olarak filtresiz
+ * BASİT bir aramaya düşülür, böylece rehber izin yetersizliğinde de tamamen
+ * boş kalmaz. Her iki deneme de başarısız olursa hata konsola detaylı basılıp
  * tekrar fırlatılır — widget katmanı bunu yakalayıp kullanıcıya sade/profesyonel
- * bir uyarı gösterir (bkz. CompanyDirectory.tsx).
+ * bir uyarı gösterir (bkz. CompanyDirectory.tsx). Telefon sonuçları AYRI bir
+ * sorgudan (searchDirectoryByPhone) gelip isim/departman/unvan sonuçlarıyla
+ * id'ye göre tekilleştirilerek birleştirilir.
  */
 export const searchDirectory = async (context: WebPartContext, query: string): Promise<IDirectoryUser[]> => {
     const trimmed = query.trim();
@@ -191,22 +243,34 @@ export const searchDirectory = async (context: WebPartContext, query: string): P
     }
 
     const client = await context.msGraphClientFactory.getClient('3');
-    const escaped = trimmed.replace(/"/g, '\\"');
+    const escapedSearch = trimmed.replace(/"/g, '\\"');
 
+    let textResults: IDirectoryUser[];
     try {
-        return await searchDirectoryAdvanced(client, escaped);
+        textResults = await searchDirectoryAdvanced(client, escapedSearch);
     } catch (advancedError) {
         console.warn(
             '[GraphService] Gelişmiş rehber sorgusu (accountEnabled + signInActivity) başarısız, ' +
             'basit aramaya düşülüyor:', advancedError
         );
         try {
-            return await searchDirectoryBasic(client, escaped);
+            textResults = await searchDirectoryBasic(client, escapedSearch);
         } catch (basicError) {
             console.error('[GraphService] Şirket rehberi araması başarısız (/users):', basicError);
             throw basicError;
         }
     }
+
+    const phoneResults = await searchDirectoryByPhone(client, trimmed);
+    const seenIds = new Set(textResults.map((u) => u.id));
+    const merged = [...textResults];
+    for (const user of phoneResults) {
+        if (!seenIds.has(user.id)) {
+            merged.push(user);
+            seenIds.add(user.id);
+        }
+    }
+    return merged;
 };
 
 /**
