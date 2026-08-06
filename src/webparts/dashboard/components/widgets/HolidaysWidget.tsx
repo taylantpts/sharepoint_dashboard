@@ -227,8 +227,16 @@ const HolidaysWidget: React.FunctionComponent = () => {
             {state === 'loaded' && holidays.length > 0 && (
                 <>
                     <div className={styles.list}>
+                        {/* ÖNCEKİ HATA: key sadece h.date idi — bazı yıllarda "Kurban
+                            Bayramı 4. Gün" ile "Atatürk'ü Anma, Gençlik ve Spor Bayramı"
+                            AYNI takvim gününe (19 Mayıs) denk geliyor. İki farklı tatil
+                            aynı key'i paylaşınca React reconciliation'ı karışıyor — bir
+                            tatil kronolojik sırasının tamamen dışında, yanlış sayfada
+                            "fazladan" bir öğe gibi görünüyordu (sayfa yenilenince/
+                            sayfalar arası geçişte gözlemlendi). date+name birleşimi
+                            her zaman benzersiz olduğu için sorunu kökten çözüyor. */}
                         {pagedHolidays.map((h) => (
-                            <div key={h.date} className={styles.row}>
+                            <div key={`${h.date}-${h.name}`} className={styles.row}>
                                 <div className={styles.dateBadge}>
                                     <span className={styles.dateBadgeDay}>{h.day}</span>
                                     <span className={styles.dateBadgeMonth}>{h.monthShort}</span>
