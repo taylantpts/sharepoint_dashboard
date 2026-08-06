@@ -34,7 +34,32 @@ const CATEGORY_DISPLAY_LABELS: Record<string, string> = {
     'Diger': 'Diğer'
 };
 
-const PAGE_SIZE = 4;
+// Kart görünümünde artık FOTOĞRAF GÖSTERİLMİYOR (kullanıcı isteği — fotoğraf
+// sadece detay modalında görünüyor) — bunun yerine her kategori için sabit,
+// küçük bir sembol/renk kullanılıyor. Renkler RequiredDocuments'taki eski
+// kategori paletiyle aynı "yumuşak/orta doygunluk" ailesinden seçildi.
+const CATEGORY_ICONS: Record<string, string> = {
+    'Elektronik': 'Devices3',
+    'Ev ve Yasam': 'Home',
+    'Giyim ve Aksesuar': 'Shirt',
+    'Arac ve Vasita': 'Car',
+    'Kitap ve Hobi': 'ReadingMode',
+    'Diger': 'Tag'
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+    'Elektronik': '#5c8fc4',
+    'Ev ve Yasam': '#6fa87a',
+    'Giyim ve Aksesuar': '#c17ba0',
+    'Arac ve Vasita': '#b8763f',
+    'Kitap ve Hobi': '#9a8bc7',
+    'Diger': '#8a8f98'
+};
+
+// Slider'ın tek bir kartı için sabit genişlik/boşluk — hem CSS'te hem de
+// kaydırma miktarını hesaplayan JS'te (translateX) aynı değerler kullanılıyor.
+const SLIDE_CARD_WIDTH = 168;
+const SLIDE_CARD_GAP = 12;
 
 const inputFieldStyles: Partial<ITextFieldStyles> = {
     root: { marginBottom: 20 },
@@ -62,7 +87,7 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
     const [state, setState] = React.useState<LoadState>('loading');
     const [selected, setSelected] = React.useState<IIkinciElItem | undefined>(undefined);
     const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
-    const [page, setPage] = React.useState(0);
+    const [sliderIndex, setSliderIndex] = React.useState(0);
     const [currentUserId, setCurrentUserId] = React.useState<number | undefined>(undefined);
 
     const [isAddOpen, setIsAddOpen] = React.useState(false);
@@ -144,7 +169,7 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
             );
             if (result.success) {
                 closeAddModal();
-                setPage(0);
+                setSliderIndex(0);
                 loadListings();
             } else {
                 setSubmitError(result.errorMessage);
@@ -182,15 +207,34 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
     };
 
     const styles = mergeStyleSets({
-        grid: {
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 14
+        // Eskiden 2 sütunlu bir kart IZGARASI + sayfa (pagination) düğmeleriyle
+        // ilerliyordu — çok sayıda ilan girildiğinde bu, widget'ı dikeyde
+        // gereksiz yere uzatıyordu. Artık TEK SATIRLIK, yatayda kayan bir
+        // slider: kartlar küçüldü (fotoğraf yerine kategori sembolü, bkz.
+        // CATEGORY_ICONS) VE hepsi tek satırda, transform:translateX ile
+        // kaydırılıyor — dikeyde kapladığı alan sabit ve çok daha az.
+        sliderRow: {
+            display: 'flex',
+            alignItems: 'center'
         },
-        card: {
+        sliderViewport: {
+            overflow: 'hidden',
+            flexGrow: 1,
+            minWidth: 0
+        },
+        sliderTrack: {
+            display: 'flex',
+            transition: 'transform 0.3s ease'
+        },
+        sliderNavButton: {
+            flexShrink: 0
+        },
+        slideCard: {
             display: 'flex',
             flexDirection: 'column',
-            width: '100%',
+            width: SLIDE_CARD_WIDTH,
+            flexShrink: 0,
+            marginRight: SLIDE_CARD_GAP,
             background: '#ffffff',
             border: `1px solid ${theme.palette.neutralLighter}`,
             borderRadius: 14,
@@ -198,45 +242,40 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
             cursor: 'pointer',
             textAlign: 'left',
             font: 'inherit',
-            padding: 0,
+            padding: '12px 12px',
             transition: 'box-shadow 0.15s ease, transform 0.15s ease',
             selectors: {
                 ':hover': { boxShadow: '0 8px 20px rgba(15,23,42,0.10)', transform: 'translateY(-2px)' }
             }
         },
-        cardImage: {
-            width: '100%',
-            height: 110,
-            objectFit: 'cover',
-            display: 'block',
-            background: theme.palette.neutralLighterAlt
-        },
-        cardImagePlaceholder: {
-            width: '100%',
-            height: 110,
+        slideIconBadge: {
+            width: 36,
+            height: 36,
+            borderRadius: 10,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: theme.palette.neutralLighterAlt,
-            color: theme.palette.neutralTertiary,
-            fontSize: 28
+            marginBottom: 8,
+            flexShrink: 0
         },
-        cardBody: {
-            padding: '10px 12px'
+        slideIcon: {
+            fontSize: 16,
+            color: '#ffffff'
         },
-        cardCategory: {
+        slideCategory: {
             display: 'inline-block',
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: 700,
             color: theme.palette.themePrimary,
             background: theme.palette.themeLighterAlt,
             borderRadius: 6,
-            padding: '2px 7px',
+            padding: '2px 6px',
             marginBottom: 6,
             textTransform: 'uppercase',
-            letterSpacing: 0.3
+            letterSpacing: 0.3,
+            alignSelf: 'flex-start'
         },
-        cardTitle: {
+        slideTitle: {
             fontSize: 13,
             fontWeight: 700,
             color: theme.semanticColors.bodyText,
@@ -245,21 +284,9 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
             whiteSpace: 'nowrap',
             marginBottom: 2
         },
-        // NOT: "gap" burada kullanılmıyor — cardPoster'a marginRight yerine
-        // ikisi ayrı satır (flex column) olduğu için ihtiyaç yok.
-        cardMetaRow: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 4
-        },
-        cardPrice: {
-            fontSize: 12,
-            fontWeight: 700,
-            color: theme.semanticColors.bodyText
-        },
-        cardPoster: {
-            fontSize: 10,
+        slidePrice: {
+            fontSize: 11,
+            fontWeight: 600,
             color: theme.semanticColors.bodySubtext,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -268,22 +295,6 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
         emptyHint: {
             fontSize: 12,
             color: theme.semanticColors.bodySubtext
-        },
-        pagination: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: 12
-        },
-        paginationPrevButton: {
-            marginRight: 8
-        },
-        pageLabel: {
-            fontSize: 11,
-            color: theme.semanticColors.bodySubtext,
-            minWidth: 70,
-            textAlign: 'center',
-            marginRight: 8
         },
         // --- Detay modalı ---
         modalMainImage: {
@@ -471,18 +482,17 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
         }
     });
 
-    const pageCount = Math.max(1, Math.ceil(listings.length / PAGE_SIZE));
-    const pagedListings = listings.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-
     const categoryOptions: IDropdownOption[] = IKINCI_EL_CATEGORIES.map((c) => ({
         key: c, text: CATEGORY_DISPLAY_LABELS[c] ?? c
     }));
 
     const isOwnListing = !!selected && !!currentUserId && selected.posterId === currentUserId;
+    const maxSliderIndex = Math.max(0, listings.length - 1);
+    const trackOffset = sliderIndex * (SLIDE_CARD_WIDTH + SLIDE_CARD_GAP);
 
     return (
         <WidgetCard
-            title="İkinci El İlanlar"
+            title="Personel İlanları"
             subtitle="Çalışanlar arası eşya ilan panosu"
             iconName="ShoppingCart"
             headerAction={(
@@ -500,47 +510,43 @@ const IkinciElWidget: React.FunctionComponent<IIkinciElWidgetProps> = (props) =>
                 <Text className={styles.emptyHint}>Henüz bir ilan bulunmuyor. İlk ilanı sen ekle!</Text>
             )}
             {state === 'loaded' && listings.length > 0 && (
-                <>
-                    <div className={styles.grid}>
-                        {pagedListings.map((item) => (
-                            <button key={item.id} type="button" className={styles.card} onClick={() => openDetail(item)}>
-                                {item.imageUrls[0] ? (
-                                    <img src={item.imageUrls[0]} alt="" className={styles.cardImage} />
-                                ) : (
-                                    <div className={styles.cardImagePlaceholder}>
-                                        <Icon iconName="Tag" />
-                                    </div>
-                                )}
-                                <div className={styles.cardBody}>
-                                    <span className={styles.cardCategory}>{CATEGORY_DISPLAY_LABELS[item.category] ?? item.category}</span>
-                                    <div className={styles.cardTitle}>{item.title}</div>
-                                    <div className={styles.cardMetaRow}>
-                                        <span className={styles.cardPrice}>{item.price || '—'}</span>
-                                        <span className={styles.cardPoster}>{item.posterName}</span>
-                                    </div>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                    {listings.length > PAGE_SIZE && (
-                        <div className={styles.pagination}>
-                            <IconButton
-                                className={styles.paginationPrevButton}
-                                iconProps={{ iconName: 'ChevronLeft' }}
-                                ariaLabel="Önceki sayfa"
-                                disabled={page === 0}
-                                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                            />
-                            <span className={styles.pageLabel}>Sayfa {page + 1} / {pageCount}</span>
-                            <IconButton
-                                iconProps={{ iconName: 'ChevronRight' }}
-                                ariaLabel="Sonraki sayfa"
-                                disabled={page >= pageCount - 1}
-                                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                            />
-                        </div>
+                <div className={styles.sliderRow}>
+                    {listings.length > 1 && (
+                        <IconButton
+                            className={styles.sliderNavButton}
+                            iconProps={{ iconName: 'ChevronLeft' }}
+                            ariaLabel="Önceki ilan"
+                            disabled={sliderIndex === 0}
+                            onClick={() => setSliderIndex((i) => Math.max(0, i - 1))}
+                        />
                     )}
-                </>
+                    <div className={styles.sliderViewport}>
+                        <div className={styles.sliderTrack} style={{ transform: `translateX(-${trackOffset}px)` }}>
+                            {listings.map((item) => {
+                                const categoryColor = CATEGORY_COLORS[item.category] ?? CATEGORY_COLORS.Diger;
+                                return (
+                                    <button key={item.id} type="button" className={styles.slideCard} onClick={() => openDetail(item)}>
+                                        <div className={styles.slideIconBadge} style={{ background: categoryColor }}>
+                                            <Icon iconName={CATEGORY_ICONS[item.category] ?? 'Tag'} className={styles.slideIcon} />
+                                        </div>
+                                        <span className={styles.slideCategory}>{CATEGORY_DISPLAY_LABELS[item.category] ?? item.category}</span>
+                                        <div className={styles.slideTitle}>{item.title}</div>
+                                        <div className={styles.slidePrice}>{item.price || '—'}</div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    {listings.length > 1 && (
+                        <IconButton
+                            className={styles.sliderNavButton}
+                            iconProps={{ iconName: 'ChevronRight' }}
+                            ariaLabel="Sonraki ilan"
+                            disabled={sliderIndex >= maxSliderIndex}
+                            onClick={() => setSliderIndex((i) => Math.min(maxSliderIndex, i + 1))}
+                        />
+                    )}
+                </div>
             )}
 
             <DetailModal

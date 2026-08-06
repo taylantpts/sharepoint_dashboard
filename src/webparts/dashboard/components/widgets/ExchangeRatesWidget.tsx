@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Spinner, SpinnerSize, MessageBar, MessageBarType, useTheme, mergeStyleSets } from '@fluentui/react';
+import { Spinner, SpinnerSize, MessageBar, MessageBarType, TextField, Dropdown, IDropdownOption, useTheme, mergeStyleSets } from '@fluentui/react';
 import WidgetCard from '../WidgetCard';
 import { DATA_UNAVAILABLE_MESSAGE } from '../../constants';
 
@@ -141,6 +141,11 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
     const [dataByCode, setDataByCode] = React.useState<Record<string, IAssetData>>({});
     const [selectedCode, setSelectedCode] = React.useState<string>('USD');
     const [hoverIndex, setHoverIndex] = React.useState<number | undefined>(undefined);
+    // Hesap makinesi: "seçili varlıktan X birim, hedef para biriminde ne
+    // eder" — bkz. render'daki calculatorSection. calcTargetCode 'TRY' veya
+    // o anki sekmedeki (fiat/kripto) başka bir varlığın kodu olabilir.
+    const [calcAmount, setCalcAmount] = React.useState('1');
+    const [calcTargetCode, setCalcTargetCode] = React.useState('TRY');
 
     const currentAssets = mode === 'fiat' ? FIAT_ASSETS : CRYPTO_ASSETS;
 
@@ -258,6 +263,13 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
     React.useEffect(() => {
         setHoverIndex(undefined);
     }, [selectedCode]);
+
+    // Sekme (Döviz <-> Coin) değiştiğinde hedef para birimi, o sekmede
+    // olmayan bir kod olabilir (ör. "BTC" seçiliyken Döviz'e geçmek) —
+    // bu yüzden sekme değişince hedef güvenli varsayılana (TL) döner.
+    React.useEffect(() => {
+        setCalcTargetCode('TRY');
+    }, [mode]);
 
     const styles = mergeStyleSets({
         // Üstte "Döviz" / "Coin" segmentli geçiş — aynı widget içinde iki
@@ -448,11 +460,84 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
             fontSize: 13,
             fontWeight: 700,
             color: theme.semanticColors.bodyText
+        },
+        // Hesap makinesi: "seçili varlıktan X birim ne eder" — grafiğin altında,
+        // istatistik satırıyla aynı üst-ayraç dilini paylaşan ayrı bir bölüm.
+        calculatorSection: {
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: `1px dashed ${theme.palette.neutralLighter}`
+        },
+        calculatorLabel: {
+            fontSize: 10,
+            color: theme.semanticColors.bodySubtext,
+            textTransform: 'uppercase',
+            letterSpacing: 0.4,
+            marginBottom: 6
+        },
+        // NOT: "gap" flex özelliği burada BİLİNÇLİ OLARAK KULLANILMIYOR (bu
+        // projenin render ortamında desteklenmiyor) — her çocuk kendi
+        // marginRight'ını taşıyor.
+        calculatorRow: {
+            display: 'flex',
+            alignItems: 'center'
+        },
+        calculatorInput: {
+            width: 84,
+            marginRight: 8
+        },
+        calculatorFromUnit: {
+            fontSize: 12,
+            fontWeight: 600,
+            color: theme.semanticColors.bodyText,
+            marginRight: 10,
+            flexShrink: 0
+        },
+        calculatorEquals: {
+            fontSize: 13,
+            color: theme.semanticColors.bodySubtext,
+            marginRight: 10,
+            flexShrink: 0
+        },
+        calculatorResult: {
+            fontSize: 15,
+            fontWeight: 800,
+            color: theme.palette.themePrimary,
+            marginRight: 10,
+            flexGrow: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+        },
+        calculatorDropdown: {
+            width: 110,
+            flexShrink: 0
         }
     });
 
     const selectedAsset = currentAssets.filter((a) => a.code === selectedCode)[0];
     const selectedData = dataByCode[selectedCode];
+
+    // Hedef para birimi seçenekleri: TL + o anki sekmedeki (fiat/kripto)
+    // TÜM varlıklar (seçili olan dahil — kendine çevirmek anlamsız ama
+    // zararsız, ayrıca filtrelemeye gerek bırakmıyor).
+    const calculatorTargetOptions: IDropdownOption[] = [
+        { key: 'TRY', text: 'TL (₺)' },
+        ...currentAssets.map((a) => ({ key: a.code, text: a.label }))
+    ];
+
+    // Her varlığın current değeri zaten "1 birim = X TRY" — bu yüzden iki
+    // varlık arasındaki çapraz kur, ikisinin TRY değerinin oranı kadar basit;
+    // ayrıca bir API isteği gerekmiyor, tamamen zaten yüklenmiş veriden hesaplanıyor.
+    const calcAmountNumber = parseFloat(calcAmount.replace(',', '.'));
+    const calcFromRate = selectedData?.current;
+    const calcToRate = calcTargetCode === 'TRY' ? 1 : dataByCode[calcTargetCode]?.current;
+    const calcResult =
+        !isNaN(calcAmountNumber) && calcFromRate !== undefined && calcToRate !== undefined && calcToRate !== 0
+            ? (calcAmountNumber * calcFromRate) / calcToRate
+            : undefined;
+    const calcTargetUnit = calcTargetCode === 'TRY' ? '₺' : currentAssets.filter((a) => a.code === calcTargetCode)[0]?.unit ?? '';
 
     const handleChartMouseMove = (event: React.MouseEvent<HTMLDivElement>, pointCount: number): void => {
         const bounds = event.currentTarget.getBoundingClientRect();
@@ -597,6 +682,29 @@ const ExchangeRatesWidget: React.FunctionComponent = () => {
                                 <div className={styles.statItem}>
                                     <span className={styles.statLabel}>Güncelleme</span>
                                     <span className={styles.statValue}>{formatChartDate(selectedData.series[selectedData.series.length - 1].date)}</span>
+                                </div>
+                            </div>
+                            <div className={styles.calculatorSection}>
+                                <div className={styles.calculatorLabel}>Hesap Makinesi</div>
+                                <div className={styles.calculatorRow}>
+                                    <TextField
+                                        className={styles.calculatorInput}
+                                        value={calcAmount}
+                                        onChange={(_, v) => setCalcAmount(v ?? '')}
+                                        underlined
+                                        ariaLabel={`${selectedAsset.label} miktarı`}
+                                    />
+                                    <span className={styles.calculatorFromUnit}>{selectedAsset.code}</span>
+                                    <span className={styles.calculatorEquals}>=</span>
+                                    <span className={styles.calculatorResult}>
+                                        {calcResult !== undefined ? `${formatTry(calcResult)} ${calcTargetUnit}` : '—'}
+                                    </span>
+                                    <Dropdown
+                                        className={styles.calculatorDropdown}
+                                        options={calculatorTargetOptions}
+                                        selectedKey={calcTargetCode}
+                                        onChange={(_, option) => setCalcTargetCode(option?.key as string)}
+                                    />
                                 </div>
                             </div>
                         </div>
