@@ -4,7 +4,8 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import {
     getLatestIds, getSeenIds, setSeenIds,
     LatestIds, NotificationCategory,
-    NOTIFICATION_CATEGORY_ORDER, NOTIFICATION_CATEGORY_LABELS, NOTIFICATION_CATEGORY_ICONS
+    NOTIFICATION_CATEGORY_ORDER, NOTIFICATION_CATEGORY_LABELS, NOTIFICATION_CATEGORY_ICONS,
+    NOTIFICATION_CATEGORY_ANCHOR_ID
 } from '../../services/NotificationService';
 
 export interface INotificationBellProps {
@@ -68,6 +69,42 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
         }
     };
 
+    /**
+     * Bir bildirim satırına tıklanınca: callout kapanır (görüldü sayılır,
+     * handleDismiss ile aynı), sayfa ilgili widget'a kaydırılır (bkz.
+     * Dashboard.tsx'teki id'ler ve NOTIFICATION_CATEGORY_ANCHOR_ID) ve o
+     * widget'ın etrafında kısa süreli bir "ışıma" halkası belirip sönerek
+     * kullanıcıya TAM OLARAK hangi karta gittiğini gösterir — sadece
+     * kaydırmak, özellikle birbirine yakın/benzer görünen kartlar arasında
+     * hangisinin hedef olduğunu belli etmiyordu.
+     * ÖNCEKİ HATA: scrollIntoView({behavior:'smooth'}) bu render ortamında
+     * SESSİZCE hiçbir şey yapmıyordu (aynı "modern CSS/davranış seçeneği bu
+     * ortamda çalışmıyor" kalıbı — bkz. lineHeight/flex-direction notları) —
+     * fonksiyon hatasız çalışıyor, hedef doğru bulunuyor ama sayfa YERİNDE
+     * kalıyordu. 'auto' (anlık atlama) burada güvenilir şekilde çalışıyor.
+     */
+    const handleNotificationClick = (category: NotificationCategory): void => {
+        handleDismiss();
+        const target = document.getElementById(NOTIFICATION_CATEGORY_ANCHOR_ID[category]);
+        if (!target) {
+            return;
+        }
+        target.scrollIntoView({ behavior: 'auto', block: 'center' });
+        const prevTransition = target.style.transition;
+        const prevBoxShadow = target.style.boxShadow;
+        const prevBorderRadius = target.style.borderRadius;
+        target.style.transition = 'box-shadow 0.3s ease';
+        target.style.borderRadius = target.style.borderRadius || '22px';
+        target.style.boxShadow = `0 0 0 3px ${theme.palette.themePrimary}, 0 8px 24px ${theme.palette.themePrimary}55`;
+        window.setTimeout(() => {
+            target.style.boxShadow = prevBoxShadow;
+            window.setTimeout(() => {
+                target.style.transition = prevTransition;
+                target.style.borderRadius = prevBorderRadius;
+            }, 320);
+        }, 1400);
+    };
+
     const styles = mergeStyleSets({
         button: {
             position: 'relative',
@@ -119,10 +156,26 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
             color: theme.semanticColors.bodyText,
             marginBottom: 12
         },
+        // ÖNCEKİ HATA: satırlar sade, tıklanamaz bir <div> idi — kullanıcı bir
+        // bildirime tıklayınca ilgili widget'a kaydırılmasını istedi. Artık
+        // tam genişlikte bir <button>: cursor:pointer + hover zemini, buranın
+        // tıklanabilir bir kontrol olduğunu görsel olarak da anlatıyor.
         row: {
             display: 'flex',
             alignItems: 'center',
-            padding: '7px 0'
+            width: '100%',
+            padding: '7px 8px',
+            margin: '0 -8px',
+            border: 'none',
+            background: 'transparent',
+            borderRadius: 8,
+            cursor: 'pointer',
+            textAlign: 'left',
+            font: 'inherit',
+            transition: 'background 0.15s ease',
+            selectors: {
+                ':hover': { background: theme.palette.neutralLighterAlt }
+            }
         },
         rowIconWrap: {
             width: 30,
@@ -178,12 +231,17 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
                             <div className={styles.emptyHint}>Yeni bir şey yok, her şeyi görmüşsün.</div>
                         ) : (
                             newCategories.map((category) => (
-                                <div key={category} className={styles.row}>
+                                <button
+                                    key={category}
+                                    type="button"
+                                    className={styles.row}
+                                    onClick={() => handleNotificationClick(category)}
+                                >
                                     <div className={styles.rowIconWrap}>
                                         <Icon iconName={NOTIFICATION_CATEGORY_ICONS[category]} className={styles.rowIcon} />
                                     </div>
                                     <span className={styles.rowLabel}>{NOTIFICATION_CATEGORY_LABELS[category]}</span>
-                                </div>
+                                </button>
                             ))
                         )}
                     </div>

@@ -37,8 +37,13 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                     grid'ten buraya, Duyurular'ın hemen altına taşındı; bu boşluğu
                     dolduruyor ve iki sütun daha dengeli görünüyor. */}
                 <div className={styles.areaAnnouncements}>
-                    <AnnouncementsFeed context={props.context} />
-                    <div className={styles.stackedBelow}>
+                    {/* id'ler NotificationBell'in "bildirime tıklayınca ilgili widget'a
+                        kaydır" özelliği için bkz. NotificationService.ts
+                        NOTIFICATION_CATEGORY_ANCHOR_ID. */}
+                    <div id="dashboard-anchor-announcements">
+                        <AnnouncementsFeed context={props.context} />
+                    </div>
+                    <div id="dashboard-anchor-events" className={styles.stackedBelow}>
                         <UpcomingEvents context={props.context} />
                     </div>
                 </div>
@@ -96,7 +101,7 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                 <div className={styles.areaISGCalendar}>
                     <ISGCalendarWidget context={props.context} />
                 </div>
-                <div className={styles.areaRecentJoiners}>
+                <div id="dashboard-anchor-katilis" className={styles.areaRecentJoiners}>
                     <RecentOnboardingWidget
                         context={props.context}
                         kind="katilis"
@@ -106,7 +111,7 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                         emptyHint="Henüz görüntülenecek katılış kaydı bulunmuyor."
                     />
                 </div>
-                <div className={styles.areaRecentLeavers}>
+                <div id="dashboard-anchor-ayrilis" className={styles.areaRecentLeavers}>
                     <RecentOnboardingWidget
                         context={props.context}
                         kind="ayrilis"

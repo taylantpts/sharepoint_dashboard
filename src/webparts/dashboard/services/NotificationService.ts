@@ -28,6 +28,21 @@ export const NOTIFICATION_CATEGORY_ICONS: Record<NotificationCategory, string> =
     ayrilis: 'UserRemove'
 };
 
+/**
+ * Bildirime tıklanınca sayfada kaydırılacak (scroll) hedef — Dashboard.tsx
+ * ilgili widget'ı saran div'e bu id'yi veriyor. "katilis"/"ayrilis" kasıtlı
+ * olarak "Katılış & Ayrılış Takibi" (yönetim/düzenleme widget'ı) DEĞİL,
+ * "Aramıza Katılanlar"/"Aramızdan Ayrılanlar" (salt-okunur son-5 özeti)
+ * widget'larına gidiyor — bildirimin kendisi de o listelerdeki YENİ kaydı
+ * haber verdiği için en doğrudan/anlamlı hedef bu.
+ */
+export const NOTIFICATION_CATEGORY_ANCHOR_ID: Record<NotificationCategory, string> = {
+    announcements: 'dashboard-anchor-announcements',
+    events: 'dashboard-anchor-events',
+    katilis: 'dashboard-anchor-katilis',
+    ayrilis: 'dashboard-anchor-ayrilis'
+};
+
 const CATEGORY_LIST: Record<NotificationCategory, { siteUrl: string; listTitle: string }> = {
     announcements: { siteUrl: '', listTitle: ANNOUNCEMENTS_LIST_TITLE },
     events: { siteUrl: '', listTitle: EVENTS_LIST_TITLE },
