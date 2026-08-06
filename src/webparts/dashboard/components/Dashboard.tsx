@@ -23,6 +23,7 @@ import ISGCalendarWidget from './widgets/ISGCalendarWidget';
 import BirthdaysWidget from './widgets/BirthdaysWidget';
 import OnboardingTrackerWidget from './widgets/OnboardingTrackerWidget';
 import RecentOnboardingWidget from './widgets/RecentOnboardingWidget';
+import IkinciElWidget from './widgets/IkinciElWidget';
 
 const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
     return (
@@ -69,6 +70,12 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                             <PersonalAssistant context={props.context} />
                         </div>
                     </div>
+                </div>
+
+                {/* Görsel-ağırlıklı kart grid'i daha fazla nefes alsın diye tam
+                    genişlik (12/12) — Katılış & Ayrılış Takibi'yle aynı mantık. */}
+                <div id="dashboard-anchor-ikinciel" className={styles.areaIkinciEl}>
+                    <IkinciElWidget context={props.context} />
                 </div>
 
                 <div className={styles.areaHolidays}>

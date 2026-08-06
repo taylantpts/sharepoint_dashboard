@@ -92,6 +92,7 @@
     grid-template-areas:
         'announcements announcements announcements announcements announcements announcements weather weather weather weather weather weather'
         'quad quad quad quad quad quad quad quad quad quad quad quad'
+        'ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl ikinciEl'
         'holidays holidays holidays holidays holidays holidays exchange exchange exchange exchange exchange exchange'
         'news news news news news news support support support support support support'
         'hr hr hr hr hr hr assets assets assets assets assets assets'
@@ -158,6 +159,13 @@
  * (tam 12 sütun genişlik) kaplar. */
 .areaQuad {
     grid-area: quad;
+    min-width: 0;
+}
+
+/* İkinci El İlanlar — görsel-ağırlıklı kart grid'i, tam genişlik (12/12) tek
+ * bir alan kaplıyor (Katılış & Ayrılış Takibi ile aynı mantık). */
+.areaIkinciEl {
+    grid-area: ikinciEl;
     min-width: 0;
 }
 
@@ -270,6 +278,7 @@
             'announcements announcements'
             'weather weather'
             'quad quad'
+            'ikinciEl ikinciEl'
             'holidays exchange'
             'news support'
             'hr assets'
@@ -296,6 +305,7 @@
             'announcements'
             'weather'
             'quad'
+            'ikinciEl'
             'holidays'
             'exchange'
             'news'

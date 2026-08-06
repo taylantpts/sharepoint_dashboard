@@ -3,6 +3,10 @@ import { Icon, Persona, PersonaSize, mergeStyleSets, keyframes } from '@fluentui
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { useTimeAwareTheme, getTimeTheme } from '../../themeManager';
 import NotificationBell from './NotificationBell';
+import { useDashboardSummary } from '../../hooks/useDashboardSummary';
+import { useNotificationHistory } from '../../hooks/useNotificationHistory';
+import { scrollToAnchorWithHighlight } from '../../utils/scrollToAnchor';
+import { NOTIFICATION_CATEGORY_ANCHOR_ID, NotificationCategory } from '../../services/NotificationService';
 
 export interface IWelcomeHeaderProps {
     userDisplayName: string;
@@ -66,13 +70,6 @@ const growUnderline = keyframes({
 const haloPulse = keyframes({
     '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.55 },
     '50%': { transform: 'translate(-50%, -50%) scale(1.2)', opacity: 0.85 }
-});
-
-// Header'ın dış kenarında zaman dilimi rengiyle yavaşça nefes alan bir
-// ışıma — sabit gölgeye ek, ikinci (ayrı) bir animasyon katmanı olarak.
-const edgeGlow = keyframes({
-    '0%, 100%': { boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08), 0 0 0px 0px var(--yorpas-theme-header-decoration, transparent)' },
-    '50%': { boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08), 0 0 30px 2px var(--yorpas-theme-header-decoration, transparent)' }
 });
 
 // Sayfa yüklendiğinde header'ın yavaşça belirmesi (fade-in-up) — bir kerelik,
@@ -160,6 +157,31 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
         ? `${context.pageContext.web.absoluteUrl}/_layouts/15/userphoto.aspx?size=L&accountname=${encodeURIComponent(loginName)}`
         : undefined;
 
+    // "Yaklaşan etkinlik" ÇİPİ toplam sayı gösterir (bkz. useDashboardSummary).
+    const eventsSummary = useDashboardSummary(context);
+    // "Yeni duyuru"/"yeni ilan" çipleri ise NotificationBell'le AYNI, tek bir
+    // paylaşılan bildirim geçmişinden besleniyor (bkz. useNotificationHistory
+    // dosyasındaki not — önceden bu ikisi ayrı ayrı senkronize oluyordu ve bu
+    // bir yarış durumuna yol açıyordu: kullanıcı yeni bir ilan eklediğinde
+    // bile çip "0 yeni ilan" göstermeye devam edebiliyordu).
+    const { history, isLoaded: isHistoryLoaded, markRead, markCategoryAsRead } = useNotificationHistory(context);
+    const newAnnouncementsCount = history.filter((entry) => entry.category === 'announcements' && !entry.read).length;
+    const newListingsCount = history.filter((entry) => entry.category === 'ikinciEl' && !entry.read).length;
+
+    // NOT: highlightElement, accentColor'u `${accentColor}55` şeklinde hex+alfa
+    // olarak STRING BİRLEŞTİRİYOR — bu yüzden burada CSS `var(...)` referansı
+    // DEĞİL, headerVariant'ın gerçek/çözümlenmiş hex rengi kullanılıyor
+    // (`var(...)55` geçersiz bir CSS token'ı üretir ve TÜM box-shadow
+    // değerini sessizce geçersiz kılardı — ışıma hiç görünmezdi).
+    const accentColor = headerVariant.decorationColor;
+    // Bir çipe tıklamak da (zildeki tek tek okuma gibi) o kategoriye ait TÜM
+    // bildirimleri okundu işaretler — çip sayacı böylece 0'a döner ve zille
+    // tutarlı kalır.
+    const handleSummaryChipClick = (category: NotificationCategory): void => {
+        markCategoryAsRead(category);
+        scrollToAnchorWithHighlight(NOTIFICATION_CATEGORY_ANCHOR_ID[category], accentColor);
+    };
+
     // headerVariant (dolayısıyla timeBucket) DIŞINDA hiçbir şeye bağlı değil —
     // useMemo olmadan bu obje HER render'da (ör. üst bileşenin re-render'ında)
     // yeniden kurulur ve mergeStyleSets'in ürettiği class adları değişebilir,
@@ -177,14 +199,20 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
             boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)',
             minHeight: 128,
             boxSizing: 'border-box',
-            // İki AYRI animasyon aynı anda: fadeInUp bir kerelik giriş,
-            // edgeGlow ise header açık kaldığı sürece sonsuz döngüde nefes
-            // alan zaman-dilimi renginde bir dış ışıma.
-            animationName: `${fadeInUp}, ${edgeGlow}`,
-            animationDuration: '0.6s, 4.5s',
-            animationTimingFunction: 'ease-out, ease-in-out',
-            animationIterationCount: '1, infinite',
-            animationFillMode: 'both, none'
+            // ÖNCEDEN burada "edgeGlow" adında, header açık kaldığı sürece
+            // sonsuz döngüde nefes alan bir dış box-shadow ışıması vardı.
+            // Kullanıcı geri bildirimiyle kaldırıldı: box-shadow animasyonu
+            // GPU tarafından compositable değildir (transform/opacity'nin
+            // aksine), bu da meshLayer/avatarGlow gibi diğer sürekli
+            // animasyonlarla üst üste bindiğinde gözle görülür bir
+            // "kasma/takılma" hissi yaratıyordu. Yerine, aynı alanı FONKSİYONEL
+            // bir hızlı özet şeridi (bkz. summaryStrip) dolduruyor — artık
+            // sadece bir kerelik fadeInUp giriş animasyonu kaldı.
+            animationName: fadeInUp,
+            animationDuration: '0.6s',
+            animationTimingFunction: 'ease-out',
+            animationIterationCount: 1,
+            animationFillMode: 'both'
         },
         // Katman 1: çok hafif/dağınık mesh gradyanı — zaman dilimine göre değişir.
         meshLayer: {
@@ -488,6 +516,58 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
         notificationBellWrap: {
             marginRight: 16,
             marginTop: 2
+        },
+        // Eskiden header'ın etrafında yanıp sönen (ve "kasan") edgeGlow
+        // animasyonunun kapladığı alan artık burada FONKSİYONEL bir hızlı
+        // özet şeridi olarak dolduruluyor — content'in hemen altında, ince
+        // bir üst ayraçla (statik, animasyonsuz) ayrılmış ikinci bir satır.
+        summaryStrip: {
+            position: 'relative',
+            zIndex: 3,
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            padding: '0 40px 20px',
+            boxSizing: 'border-box',
+            borderTop: '1px solid var(--yorpas-theme-header-glass-border, rgba(15,23,42,0.08))',
+            marginTop: -4,
+            paddingTop: 14,
+            transition: 'border-color 1.5s ease',
+            selectors: {
+                '@media (max-width: 520px)': {
+                    padding: '0 24px 16px',
+                    paddingTop: 14
+                }
+            }
+        },
+        summaryChip: {
+            display: 'flex',
+            alignItems: 'center',
+            border: 'none',
+            background: 'rgba(15,23,42,0.045)',
+            color: 'var(--yorpas-theme-text, #334155)',
+            borderRadius: 100,
+            padding: '7px 14px',
+            marginRight: 10,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Segoe UI', -apple-system, sans-serif",
+            cursor: 'pointer',
+            transition: 'background 0.15s ease, transform 0.15s ease',
+            selectors: {
+                ':hover': {
+                    background: 'rgba(15,23,42,0.09)',
+                    transform: 'translateY(-1px)'
+                },
+                ':active': {
+                    transform: 'translateY(0)'
+                }
+            }
+        },
+        summaryChipIcon: {
+            marginRight: 7,
+            fontSize: 14,
+            color: 'var(--yorpas-theme-header-decoration, #0078D4)'
         }
     }), [headerVariant]);
 
@@ -522,7 +602,7 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
                 </div>
                 <div className={styles.topRightRow}>
                     <div className={styles.notificationBellWrap}>
-                        <NotificationBell context={context} />
+                        <NotificationBell context={context} history={history} onEntryRead={markRead} />
                     </div>
                     <div className={styles.dateTimeBlock}>
                         <HeaderClock
@@ -537,6 +617,34 @@ const WelcomeHeader: React.FunctionComponent<IWelcomeHeaderProps> = (props) => {
                     </div>
                 </div>
             </div>
+            {isHistoryLoaded && eventsSummary && (
+                <div className={styles.summaryStrip}>
+                    <button
+                        type="button"
+                        className={styles.summaryChip}
+                        onClick={() => handleSummaryChipClick('announcements')}
+                    >
+                        <Icon iconName="Megaphone" className={styles.summaryChipIcon} />
+                        {newAnnouncementsCount} yeni duyuru
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.summaryChip}
+                        onClick={() => handleSummaryChipClick('events')}
+                    >
+                        <Icon iconName="Calendar" className={styles.summaryChipIcon} />
+                        {eventsSummary.upcomingEventsCount} yaklaşan etkinlik
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.summaryChip}
+                        onClick={() => handleSummaryChipClick('ikinciEl')}
+                    >
+                        <Icon iconName="ShoppingCart" className={styles.summaryChipIcon} />
+                        {newListingsCount} yeni ilan
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

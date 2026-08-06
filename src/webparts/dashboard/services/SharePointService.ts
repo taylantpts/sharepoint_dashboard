@@ -51,11 +51,40 @@ export interface IUpcomingEventItem {
     description?: string;
 }
 
+export interface IIkinciElItem {
+    id: number;
+    title: string;
+    description: string;
+    category: string;
+    /** Serbest metin (ör. "500 TL", "Pazarlıklı") — opsiyonel, girilmemişse boş string. */
+    price: string;
+    posterName: string;
+    /** Sadece kendi ilanını silebilme kontrolü için — currentUserId ile karşılaştırılır. */
+    posterId: number;
+    posterEmail: string;
+    dateLabel: string;
+    /** Tek görsele ("kapak") indirgenmiyor — kullanıcı "görsellerini güzel yansıtacak" istedi, bkz. getAllAttachmentUrls. */
+    imageUrls: string[];
+}
+
 // Liste adları — tenant'taki gerçek SharePoint listeleriyle birebir eşleşmeli.
 const BIRTHDAYS_LIST_TITLE = 'Birthdays';
 const FEEDBACK_LIST_TITLE = 'Feedbacks';
 const ANNOUNCEMENTS_LIST_TITLE = 'Duyurular';
 const EVENTS_LIST_TITLE = 'Etkinlikler';
+// Bu oturumda canlı ortamda OLUŞTURULDU (_api/web/lists ile) — Description
+// (Note), Kategori (Choice), Fiyat (Text) sütunlarıyla birlikte. Diğer
+// listelerin (Duyurular/Etkinlikler/Birthdays) aksine önceden var olan bir
+// liste değil, bu widget için özel olarak kuruldu.
+const IKINCI_EL_LIST_TITLE = 'İkinci El İlanlar';
+const IKINCI_EL_DESCRIPTION_FIELD = 'Aciklama';
+const IKINCI_EL_CATEGORY_FIELD = 'Kategori';
+const IKINCI_EL_PRICE_FIELD = 'Fiyat';
+
+/** Yeni ilan formundaki kategori seçenekleri — SharePoint'teki Kategori (Choice) sütunuyla BİREBİR aynı olmalı. */
+export const IKINCI_EL_CATEGORIES = [
+    'Elektronik', 'Ev ve Yasam', 'Giyim ve Aksesuar', 'Arac ve Vasita', 'Kitap ve Hobi', 'Diger'
+];
 
 // Ad Soyad ve Doğum Tarihi sütunlarının DAHİLİ (internal) adları — SharePoint,
 // görünen adındaki boşlukları "_x0020_" ile kodlar (ör. "Ad Soyad" ->
@@ -175,6 +204,31 @@ const getFirstAttachmentUrl = async (
         return body.value?.[0]?.ServerRelativeUrl;
     } catch {
         return undefined;
+    }
+};
+
+/**
+ * getFirstAttachmentUrl'in aksine TÜM eklenmiş görsellerin URL'lerini döner —
+ * İkinci El İlanları widget'ında kullanıcı birden fazla fotoğraf
+ * yükleyebiliyor ve hepsinin gösterilmesi isteniyor (tek "kapak görseli"
+ * yeterli değil). Hata durumunda (izin/ağ) sessizce boş dizi döner.
+ */
+const getAllAttachmentUrls = async (
+    context: WebPartContext,
+    listTitle: string,
+    itemId: number
+): Promise<string[]> => {
+    try {
+        const webUrl = context.pageContext.web.absoluteUrl;
+        const endpoint = `${webUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items(${itemId})/AttachmentFiles`;
+        const response = await context.spHttpClient.get(endpoint, SPHttpClient.configurations.v1);
+        if (!response.ok) {
+            return [];
+        }
+        const body: { value: ISPAttachment[] } = await response.json();
+        return (body.value ?? []).map((a) => a.ServerRelativeUrl);
+    } catch {
+        return [];
     }
 };
 
@@ -509,7 +563,7 @@ const getUsernameFromContext = (context: WebPartContext): string => {
 };
 
 /** Oturum sahibinin SharePoint kullanıcı ID'sini döner (Person/Group alanına yazmak için gerekir). */
-const getCurrentUserId = async (context: WebPartContext): Promise<number | undefined> => {
+export const getCurrentUserId = async (context: WebPartContext): Promise<number | undefined> => {
     try {
         const webUrl = context.pageContext.web.absoluteUrl;
         const response = await context.spHttpClient.get(`${webUrl}/_api/web/currentuser`, SPHttpClient.configurations.v1);
@@ -810,6 +864,103 @@ export const createEvent = async (
 };
 
 /**
+ * "İkinci El İlanlar" listesinden ilanları çeker — en yeni eklenen en üstte
+ * (Created desc). getListItems'ın aksine burada $expand=Author BİLİNÇLİ
+ * olarak kullanılıyor: "kimin koyduğu" bilgisi (isim + e-posta, iletişim
+ * için) gerekiyor ve "Author" her SharePoint listesinde standart/garanti bir
+ * alan olduğu için (özel sütun adı tahmini gibi) şema uyuşmazlığı riski
+ * taşımıyor.
+ */
+export const getIkinciElListings = async (context: WebPartContext): Promise<IIkinciElItem[]> => {
+    const webUrl = context.pageContext.web.absoluteUrl;
+    const endpoint =
+        `${webUrl}/_api/web/lists/getbytitle('${encodeURIComponent(IKINCI_EL_LIST_TITLE)}')/items` +
+        '?$top=200&$orderby=Id desc&$expand=Author&$select=*,Author/Id,Author/Title,Author/EMail';
+
+    const response = await context.spHttpClient.get(endpoint, SPHttpClient.configurations.v1);
+    if (!response.ok) {
+        const detail = await extractSPErrorDetail(response);
+        console.error(`[SharePointService] "${IKINCI_EL_LIST_TITLE}" listesi okunamadı — istek: ${endpoint}`, detail);
+        throw new Error(`"${IKINCI_EL_LIST_TITLE}" listesi okunamadı (${detail})`);
+    }
+
+    interface IIkinciElRawItem extends ISPListItem {
+        Author?: { Id: number; Title: string; EMail: string };
+    }
+    const body: { value: IIkinciElRawItem[] } = await response.json();
+    const items = body.value ?? [];
+
+    const imageUrlsPerItem = await Promise.all(
+        items.map((item) => (item.Attachments ? getAllAttachmentUrls(context, IKINCI_EL_LIST_TITLE, item.Id) : Promise.resolve([])))
+    );
+
+    return items.map((item, index) => ({
+        id: item.Id,
+        title: item.Title,
+        description: (item[IKINCI_EL_DESCRIPTION_FIELD] as string) ?? '',
+        category: (item[IKINCI_EL_CATEGORY_FIELD] as string) ?? '',
+        price: (item[IKINCI_EL_PRICE_FIELD] as string) ?? '',
+        posterName: item.Author?.Title ?? 'Bilinmiyor',
+        posterId: item.Author?.Id ?? 0,
+        posterEmail: item.Author?.EMail ?? '',
+        dateLabel: item.Created
+            ? new Date(item.Created).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '',
+        imageUrls: imageUrlsPerItem[index]
+    }));
+};
+
+/**
+ * "İkinci El İlanlar" listesine GERÇEK bir öğe ekler. Kullanıcı BİRDEN FAZLA
+ * görsel seçebilir (imageFiles) — hepsi sırayla (Promise.all ile PARALEL)
+ * aynı öğeye ek (attachment) olarak yüklenir; uploadItemImage'ın kendisi
+ * hata yutuyor olduğu için tek bir görselin başarısız yüklenmesi diğerlerini
+ * ya da ilanın kendisini etkilemez.
+ */
+export const createIkinciElListing = async (
+    context: WebPartContext,
+    title: string,
+    description: string,
+    category: string,
+    price: string,
+    imageFiles: File[]
+): Promise<ISPWriteResult> => {
+    const webUrl = context.pageContext.web.absoluteUrl;
+    const endpoint = `${webUrl}/_api/web/lists/getbytitle('${encodeURIComponent(IKINCI_EL_LIST_TITLE)}')/items`;
+
+    try {
+        const response = await context.spHttpClient.post(endpoint, SPHttpClient.configurations.v1, {
+            headers: {
+                Accept: 'application/json;odata=nometadata',
+                'Content-type': 'application/json;odata=nometadata'
+            },
+            body: JSON.stringify({
+                Title: title,
+                [IKINCI_EL_DESCRIPTION_FIELD]: description,
+                [IKINCI_EL_CATEGORY_FIELD]: category,
+                [IKINCI_EL_PRICE_FIELD]: price
+            })
+        });
+
+        if (!response.ok) {
+            const detail = await extractSPErrorDetail(response);
+            console.error(`[SharePointService] İlan eklenemedi — istek: ${endpoint}`, detail);
+            return { success: false, errorMessage: detail };
+        }
+
+        if (imageFiles.length > 0) {
+            const created: { Id: number } = await response.json();
+            await Promise.all(imageFiles.map((file) => uploadItemImage(context, IKINCI_EL_LIST_TITLE, created.Id, file)));
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('[SharePointService] İlan eklenirken beklenmeyen hata:', error);
+        return { success: false, errorMessage: (error as Error).message };
+    }
+};
+
+/**
  * Verilen listeden TEK bir öğeyi kalıcı olarak siler (SharePoint REST POST +
  * "X-HTTP-Method: DELETE" override — tarayıcılar/SPHttpClient doğrudan DELETE
  * body/header kombinasyonunu her zaman güvenilir göndermediği için bu,
@@ -850,3 +1001,12 @@ export const deleteAnnouncement = async (context: WebPartContext, itemId: number
 /** "Etkinlikler" listesinden tek bir etkinliği kalıcı olarak siler. */
 export const deleteEvent = async (context: WebPartContext, itemId: number): Promise<ISPWriteResult> =>
     deleteListItem(context, EVENTS_LIST_TITLE, itemId);
+
+/**
+ * "İkinci El İlanlar" listesinden tek bir ilanı kalıcı olarak siler. Kimin
+ * silebileceği (sadece kendi ilanı) burada DEĞİL, widget katmanında
+ * (IkinciElWidget.tsx) posterId === currentUserId kontrolüyle sağlanır —
+ * bu fonksiyon salt-yazım işlemidir, yetki kararı vermez.
+ */
+export const deleteIkinciElListing = async (context: WebPartContext, itemId: number): Promise<ISPWriteResult> =>
+    deleteListItem(context, IKINCI_EL_LIST_TITLE, itemId);

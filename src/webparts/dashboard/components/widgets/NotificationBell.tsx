@@ -2,107 +2,67 @@ import * as React from 'react';
 import { Icon, Callout, DirectionalHint, useTheme, mergeStyleSets } from '@fluentui/react';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import {
-    getLatestIds, getSeenIds, setSeenIds,
-    LatestIds, NotificationCategory,
-    NOTIFICATION_CATEGORY_ORDER, NOTIFICATION_CATEGORY_LABELS, NOTIFICATION_CATEGORY_ICONS,
+    INotificationEntry,
+    NOTIFICATION_CATEGORY_LABELS, NOTIFICATION_CATEGORY_ICONS,
     NOTIFICATION_CATEGORY_ANCHOR_ID
 } from '../../services/NotificationService';
+import { scrollToAnchorWithHighlight } from '../../utils/scrollToAnchor';
 
 export interface INotificationBellProps {
     context: WebPartContext;
+    /** Bildirim geçmişi ARTIK burada değil, üst bileşende (WelcomeHeader,
+     * bkz. useNotificationHistory) TEK bir yerde tutuluyor — hem zil hem
+     * özet şeridi çipleri AYNI veriyi okusun diye (bkz. o hook'taki not:
+     * önceden ikisi bağımsız senkronize oluyordu ve bu bir yarış durumuna
+     * yol açıyordu). NotificationBell artık salt görüntüleyici. */
+    history: INotificationEntry[];
+    onEntryRead: (entryId: string) => void;
 }
 
 /**
  * Karşılama header'ının sağ üst köşesindeki zil — Duyurular, Etkinlikler,
- * Katılış ve Ayrılış listelerinden herhangi birine yeni bir kayıt
- * eklenmişse kırmızı bir rozet gösterir (bkz. NotificationService —
+ * Katılış, Ayrılış ve İkinci El listelerinden herhangi birine yeni bir
+ * kayıt eklenmişse bir bildirim kaydı üretir (bkz. NotificationService —
  * "yenilik", tarih değil listenin en büyük Id'sine bakılarak tespit
- * edilir). "Görüldü" durumu kullanıcının TARAYICISINDA (localStorage)
- * saklanır; ayrı bir SharePoint listesi/altyapısı gerektirmez, ama bu
- * yüzden cihaza özeldir (başka bilgisayarda tekrar "yeni" sayılabilir).
+ * edilir). Son MAX_HISTORY (5) bildirim KALICI olarak (okunmuş olsa bile)
+ * listede tutulur; bir bildirime tıklamak onu SİLMEZ, sadece "okundu"
+ * görünümüne çevirir — 6. yeni bildirim geldiğinde en eski kayıt düşer.
+ * Bu geçmiş kullanıcının TARAYICISINDA (localStorage) saklanır; ayrı bir
+ * SharePoint listesi/altyapısı gerektirmez, ama bu yüzden cihaza özeldir.
  */
-const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ context }) => {
+const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ history, onEntryRead }) => {
     const theme = useTheme();
-    const loginName = context.pageContext.user.loginName;
     const buttonRef = React.useRef<HTMLButtonElement>(null);
 
-    const [latestIds, setLatestIds] = React.useState<LatestIds | undefined>(undefined);
-    const [seenIds, setSeenIdsState] = React.useState<LatestIds | undefined>(undefined);
     const [isOpen, setIsOpen] = React.useState(false);
 
-    React.useEffect(() => {
-        let isMounted = true;
-        getLatestIds(context)
-            .then((ids) => {
-                if (!isMounted) {
-                    return;
-                }
-                setLatestIds(ids);
-                const stored = getSeenIds(loginName);
-                if (!stored) {
-                    // İlk çalıştırma: var olan tüm geçmişi "yeni" saymadan,
-                    // şu anki durumu taban (baseline) al — sadece bundan
-                    // SONRA eklenenler bildirim üretir.
-                    setSeenIds(loginName, ids);
-                    setSeenIdsState(ids);
-                } else {
-                    setSeenIdsState(stored);
-                }
-            })
-            .catch((error: Error) => {
-                console.error('[NotificationBell] Son kayıtlar alınamadı:', error);
-            });
-        return () => {
-            isMounted = false;
-        };
-    }, [context, loginName]);
-
-    const newCategories: NotificationCategory[] = latestIds && seenIds
-        ? NOTIFICATION_CATEGORY_ORDER.filter((category) => latestIds[category] > seenIds[category])
-        : [];
+    const unreadCount = history.filter((entry) => !entry.read).length;
 
     const handleDismiss = (): void => {
         setIsOpen(false);
-        if (latestIds) {
-            setSeenIds(loginName, latestIds);
-            setSeenIdsState(latestIds);
-        }
     };
 
     /**
-     * Bir bildirim satırına tıklanınca: callout kapanır (görüldü sayılır,
-     * handleDismiss ile aynı), sayfa ilgili widget'a kaydırılır (bkz.
-     * Dashboard.tsx'teki id'ler ve NOTIFICATION_CATEGORY_ANCHOR_ID) ve o
-     * widget'ın etrafında kısa süreli bir "ışıma" halkası belirip sönerek
-     * kullanıcıya TAM OLARAK hangi karta gittiğini gösterir — sadece
-     * kaydırmak, özellikle birbirine yakın/benzer görünen kartlar arasında
-     * hangisinin hedef olduğunu belli etmiyordu.
-     * ÖNCEKİ HATA: scrollIntoView({behavior:'smooth'}) bu render ortamında
-     * SESSİZCE hiçbir şey yapmıyordu (aynı "modern CSS/davranış seçeneği bu
-     * ortamda çalışmıyor" kalıbı — bkz. lineHeight/flex-direction notları) —
-     * fonksiyon hatasız çalışıyor, hedef doğru bulunuyor ama sayfa YERİNDE
-     * kalıyordu. 'auto' (anlık atlama) burada güvenilir şekilde çalışıyor.
+     * Bir bildirim satırına tıklanınca: o kayıt "okundu" işaretlenir (listeden
+     * SİLİNMEZ), sayfa ilgili widget'a YUMUŞAKÇA kaydırılır ve o widget'ın
+     * etrafında kısa süreli bir "ışıma" halkası belirip söner (bkz.
+     * utils/scrollToAnchor.ts — WelcomeHeader'daki özet şeridiyle de
+     * paylaşılan ortak yardımcı).
+     *
+     * ÖNCEKİ HATA: menü kapanması İLE AYNI ANDA (senkron) tetikleniyordu.
+     * Fluent'in Callout'u varsayılan olarak kapanınca focus'u tetikleyici
+     * butona (zile) GERİ VERİR (shouldRestoreFocus, bkz. Callout.types.d.ts)
+     * — tarayıcı da focus alan bir elemanı otomatik görünüre kaydırır. Bu,
+     * header'daki zil sayfanın EN ÜSTÜNDE olduğu için, tam da bizim
+     * kaydırma animasyonumuz başlarken sayfayı GERİ en tepeye çekiyor ve
+     * "bildirime tıklayınca ilgili widget'a kaymıyor" hissi yaratıyordu.
+     * Çözüm iki parça: Callout'a shouldRestoreFocus={false} verildi VE
+     * menü kapatma, kaydırma animasyonu bitene kadar ERTELENDİ.
      */
-    const handleNotificationClick = (category: NotificationCategory): void => {
-        handleDismiss();
-        const target = document.getElementById(NOTIFICATION_CATEGORY_ANCHOR_ID[category]);
-        if (!target) {
-            return;
-        }
-        target.scrollIntoView({ behavior: 'auto', block: 'center' });
-        const prevTransition = target.style.transition;
-        const prevBoxShadow = target.style.boxShadow;
-        const prevBorderRadius = target.style.borderRadius;
-        target.style.transition = 'box-shadow 0.3s ease';
-        target.style.borderRadius = target.style.borderRadius || '22px';
-        target.style.boxShadow = `0 0 0 3px ${theme.palette.themePrimary}, 0 8px 24px ${theme.palette.themePrimary}55`;
-        window.setTimeout(() => {
-            target.style.boxShadow = prevBoxShadow;
-            window.setTimeout(() => {
-                target.style.transition = prevTransition;
-                target.style.borderRadius = prevBorderRadius;
-            }, 320);
-        }, 1400);
+    const handleNotificationClick = (entry: INotificationEntry): void => {
+        onEntryRead(entry.id);
+        scrollToAnchorWithHighlight(NOTIFICATION_CATEGORY_ANCHOR_ID[entry.category], theme.palette.themePrimary);
+        window.setTimeout(() => setIsOpen(false), 650);
     };
 
     const styles = mergeStyleSets({
@@ -177,6 +137,13 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
                 ':hover': { background: theme.palette.neutralLighterAlt }
             }
         },
+        // Okunmamış bildirimler renkli/canlı, okunanlar soluk/gri — kullanıcının
+        // "tıklananlar farklı görünecek, yeni bildirimler farklı görünecek"
+        // isteğinin karşılığı. Satır ARKA PLANI da hafifçe farklı (okunmamışta
+        // çok soluk bir vurgu zemini) ki liste taranırken göz hemen ayırt etsin.
+        rowUnread: {
+            background: theme.palette.themeLighter + '55'
+        },
         rowIconWrap: {
             width: 30,
             height: 30,
@@ -188,13 +155,33 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
             marginRight: 10,
             flexShrink: 0
         },
+        rowIconWrapRead: {
+            background: theme.semanticColors.disabledBackground
+        },
         rowIcon: {
             fontSize: 14,
             color: theme.palette.themePrimary
         },
+        rowIconRead: {
+            color: theme.semanticColors.disabledText
+        },
         rowLabel: {
+            flexGrow: 1,
             fontSize: 13,
+            fontWeight: 600,
             color: theme.semanticColors.bodyText
+        },
+        rowLabelRead: {
+            fontWeight: 400,
+            color: theme.semanticColors.bodySubtext
+        },
+        unreadDot: {
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: theme.palette.themePrimary,
+            marginLeft: 8,
+            flexShrink: 0
         },
         emptyHint: {
             fontSize: 12,
@@ -216,7 +203,7 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
                 title="Bildirimler"
             >
                 <Icon iconName="Ringer" className={styles.icon} />
-                {newCategories.length > 0 && <span className={styles.badge}>{newCategories.length}</span>}
+                {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
             </button>
             {isOpen && (
                 <Callout
@@ -224,23 +211,30 @@ const NotificationBell: React.FunctionComponent<INotificationBellProps> = ({ con
                     onDismiss={handleDismiss}
                     directionalHint={DirectionalHint.bottomRightEdge}
                     gapSpace={10}
+                    shouldRestoreFocus={false}
                 >
                     <div className={styles.calloutBody}>
                         <div className={styles.calloutTitle}>Bildirimler</div>
-                        {newCategories.length === 0 ? (
+                        {history.length === 0 ? (
                             <div className={styles.emptyHint}>Yeni bir şey yok, her şeyi görmüşsün.</div>
                         ) : (
-                            newCategories.map((category) => (
+                            history.map((entry) => (
                                 <button
-                                    key={category}
+                                    key={entry.id}
                                     type="button"
-                                    className={styles.row}
-                                    onClick={() => handleNotificationClick(category)}
+                                    className={`${styles.row} ${!entry.read ? styles.rowUnread : ''}`}
+                                    onClick={() => handleNotificationClick(entry)}
                                 >
-                                    <div className={styles.rowIconWrap}>
-                                        <Icon iconName={NOTIFICATION_CATEGORY_ICONS[category]} className={styles.rowIcon} />
+                                    <div className={`${styles.rowIconWrap} ${entry.read ? styles.rowIconWrapRead : ''}`}>
+                                        <Icon
+                                            iconName={NOTIFICATION_CATEGORY_ICONS[entry.category]}
+                                            className={`${styles.rowIcon} ${entry.read ? styles.rowIconRead : ''}`}
+                                        />
                                     </div>
-                                    <span className={styles.rowLabel}>{NOTIFICATION_CATEGORY_LABELS[category]}</span>
+                                    <span className={`${styles.rowLabel} ${entry.read ? styles.rowLabelRead : ''}`}>
+                                        {NOTIFICATION_CATEGORY_LABELS[entry.category]}
+                                    </span>
+                                    {!entry.read && <span className={styles.unreadDot} aria-hidden="true" />}
                                 </button>
                             ))
                         )}
