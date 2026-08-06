@@ -14,14 +14,20 @@ interface IHolidayItem {
     name: string;
     monthShort: string;
     day: number;
+    dayOfWeek: string;
     countdownLabel: string;
 }
 
 type LoadState = 'loading' | 'loaded' | 'error';
 
 const TURKISH_MONTH_SHORT = ['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'];
+const TURKISH_DAY_OF_WEEK = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-const MAX_ITEMS = 5;
+// ÖNCEKİ HATA: sadece 5 tatil gösteriliyordu ve her satır ("takvim yaprağı"
+// + bol padding) çok yer kaplıyordu — kullanıcı satırların daraltılıp daha
+// FAZLA tatilin gösterilmesini istedi. Satırlar kompakt tek-satırlık bir
+// listeye dönüştürüldükten sonra 5 yerine 14 tatil rahatça sığıyor (~3-4 ay).
+const MAX_ITEMS = 14;
 
 const fetchHolidaysForYear = async (year: number): Promise<INagerHoliday[]> => {
     const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/TR`);
@@ -75,6 +81,7 @@ const HolidaysWidget: React.FunctionComponent = () => {
                         name: h.localName,
                         monthShort: TURKISH_MONTH_SHORT[holidayDate.getMonth()],
                         day: holidayDate.getDate(),
+                        dayOfWeek: TURKISH_DAY_OF_WEEK[holidayDate.getDay()],
                         countdownLabel: buildCountdownLabel(daysUntil)
                     };
                 });
@@ -103,41 +110,43 @@ const HolidaysWidget: React.FunctionComponent = () => {
             display: 'flex',
             flexDirection: 'column'
         },
+        // ÖNCEKİ HATA: her satır 52px genişliğinde iki katlı bir "takvim
+        // yaprağı" + bol padding taşıyordu (~72px yükseklik/satır). Artık tek
+        // satırlık, kompakt bir liste: küçük bir tarih rozeti + isim + gün adı
+        // yan yana, satır başına ~40px.
         row: {
             display: 'flex',
             alignItems: 'center',
-            padding: '10px 12px',
-            marginBottom: 10,
-            borderRadius: 10
+            padding: '6px 4px',
+            borderRadius: 8,
+            borderBottom: `1px solid ${theme.palette.neutralLighter}`,
+            selectors: {
+                ':last-child': { borderBottom: 'none' }
+            }
         },
-        leaf: {
+        dateBadge: {
             display: 'flex',
             flexDirection: 'column',
-            width: 52,
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 36,
             borderRadius: 8,
-            overflow: 'hidden',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.14)',
-            flexShrink: 0,
-            marginRight: 14
-        },
-        leafMonth: {
             background: '#7a2e26',
             color: '#ffffff',
-            fontSize: 11,
-            fontWeight: 700,
-            textAlign: 'center',
-            padding: '5px 0',
-            lineHeight: '14px',
-            letterSpacing: 0.6
+            flexShrink: 0,
+            marginRight: 12
         },
-        leafDay: {
-            background: '#ffffff',
-            color: theme.semanticColors.bodyText,
-            fontSize: 20,
+        dateBadgeDay: {
+            fontSize: 15,
             fontWeight: 800,
-            textAlign: 'center',
-            padding: '5px 0 7px',
-            lineHeight: '26px'
+            lineHeight: '17px'
+        },
+        dateBadgeMonth: {
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: 0.4,
+            lineHeight: '11px'
         },
         detailGroup: {
             display: 'flex',
@@ -146,17 +155,31 @@ const HolidaysWidget: React.FunctionComponent = () => {
             flexGrow: 1
         },
         name: {
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: 700,
             color: theme.semanticColors.bodyText,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            marginBottom: 2
+            whiteSpace: 'nowrap'
+        },
+        // NOT: "gap" burada kullanılmıyor (flex "gap" bu render ortamında
+        // desteklenmiyor) — dayOfWeek'e marginRight verildi.
+        metaRow: {
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: 11,
+            color: theme.semanticColors.bodySubtext
+        },
+        dayOfWeek: {
+            marginRight: 8
         },
         countdown: {
-            fontSize: 12,
-            color: theme.semanticColors.bodySubtext
+            flexShrink: 0,
+            marginLeft: 10,
+            fontSize: 11,
+            fontWeight: 700,
+            color: theme.palette.themePrimary,
+            whiteSpace: 'nowrap'
         },
         emptyHint: {
             fontSize: 12,
@@ -175,14 +198,17 @@ const HolidaysWidget: React.FunctionComponent = () => {
                 <div className={styles.list}>
                     {holidays.map((h) => (
                         <div key={h.date} className={styles.row}>
-                            <div className={styles.leaf}>
-                                <div className={styles.leafMonth}>{h.monthShort}</div>
-                                <div className={styles.leafDay}>{h.day}</div>
+                            <div className={styles.dateBadge}>
+                                <span className={styles.dateBadgeDay}>{h.day}</span>
+                                <span className={styles.dateBadgeMonth}>{h.monthShort}</span>
                             </div>
                             <div className={styles.detailGroup}>
                                 <div className={styles.name}>{h.name}</div>
-                                <div className={styles.countdown}>{h.countdownLabel}</div>
+                                <div className={styles.metaRow}>
+                                    <span className={styles.dayOfWeek}>{h.dayOfWeek}</span>
+                                </div>
                             </div>
+                            <div className={styles.countdown}>{h.countdownLabel}</div>
                         </div>
                     ))}
                 </div>

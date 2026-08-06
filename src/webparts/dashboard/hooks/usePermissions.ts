@@ -12,13 +12,21 @@ export interface IPermissions {
     canManageOnboarding: boolean;
     /** Katılış/Ayrılış kayıtlarındaki kalem/düzenle ikonunu görebilir mi — İK, BT veya Muhasebe. */
     canEditOnboarding: boolean;
+    /**
+     * Katılış & Ayrılış Takibi widget'ının KENDİSİNİ (tüm tabloyu, tüm
+     * çalışan kayıtlarını) görebilir mi — İK, BT veya Muhasebe DIŞINDAKİ
+     * hiçbir kullanıcı bu widget'ı hiç görmemeli (önceden sadece "+" ve
+     * kalem/düzenle ikonları gizleniyordu, tablo herkese açıktı).
+     */
+    canViewOnboarding: boolean;
 }
 
 const DEFAULT_PERMISSIONS: IPermissions = {
     canManageAnnouncements: false,
     canManageISGCalendar: false,
     canManageOnboarding: false,
-    canEditOnboarding: false
+    canEditOnboarding: false,
+    canViewOnboarding: false
 };
 
 /**
@@ -62,11 +70,13 @@ export const usePermissions = (context: WebPartContext): IPermissions => {
                 const isAccounting = groupTitles.indexOf(ACCOUNTING_GROUP_NAME) !== -1;
 
                 if (isMounted) {
+                    const canSeeOnboarding = isHr || isIt || isAccounting;
                     setPermissions({
                         canManageAnnouncements: isHr,
                         canManageISGCalendar: groupTitles.indexOf(ISG_GROUP_NAME) !== -1,
                         canManageOnboarding: isHr,
-                        canEditOnboarding: isHr || isIt || isAccounting
+                        canEditOnboarding: canSeeOnboarding,
+                        canViewOnboarding: canSeeOnboarding
                     });
                 }
             } catch (error) {

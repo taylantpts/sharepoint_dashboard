@@ -94,6 +94,26 @@ const toDirectoryUsers = (users: IGraphUser[]): IDirectoryUser[] =>
         }));
 
 /**
+ * ÖNCEKİ HATA: arama kutusunun placeholder'ı "İsim, departman veya unvan ara..."
+ * diyordu ama gerçek $search sorgusu SADECE displayName alanını tarıyordu —
+ * departman/unvan yazınca hiçbir sonuç gelmiyordu. Microsoft Graph /users
+ * $search, birden fazla alanı OR ile birleştirmeyi destekliyor (her alan
+ * kendi tırnaklı "alan:değer" ifadesiyle) — canlı ortamda "Franchise"
+ * (departman) ve iş unvanı aramalarıyla doğrulandı.
+ * NOT: mobilePhone $search'e denendi ama Graph telefon numaralarını
+ * (+90/parantez/boşluk içeren format) beklendiği gibi TARAMIYOR — tam veya
+ * kısmi numarayla arama hep "Sonuç bulunamadı" döndürdü, bu yüzden dahil
+ * edilmedi (bkz. proje notları/konuşma geçmişi — telefon arama ayrı bir
+ * $filter/startswith sorgusu gerektirir).
+ */
+const DIRECTORY_SEARCH_CLAUSE = (escapedQuery: string): string =>
+    [
+        `"displayName:${escapedQuery}"`,
+        `"department:${escapedQuery}"`,
+        `"jobTitle:${escapedQuery}"`
+    ].join(' OR ');
+
+/**
  * Gelişmiş sorgu: $filter (accountEnabled eq true) + $search + signInActivity
  * $select birlikte. Bunun için tenant'ta User.Read.All/Directory.Read.All ve
  * (15 günlük filtre için) AuditLog.Read.All gerekir — sadece User.Read.Basic.All
@@ -105,7 +125,7 @@ const searchDirectoryAdvanced = async (client: MSGraphClientV3, escapedQuery: st
         .api('/users')
         .header('ConsistencyLevel', 'eventual')
         .filter('accountEnabled eq true')
-        .search(`"displayName:${escapedQuery}"`)
+        .search(DIRECTORY_SEARCH_CLAUSE(escapedQuery))
         .select(
             'id,displayName,jobTitle,department,mail,mobilePhone,businessPhones,accountEnabled,' +
             'onPremisesDistinguishedName,signInActivity'
@@ -146,7 +166,7 @@ const searchDirectoryBasic = async (client: MSGraphClientV3, escapedQuery: strin
     const response: { value: IGraphUser[] } = await client
         .api('/users')
         .header('ConsistencyLevel', 'eventual')
-        .search(`"displayName:${escapedQuery}"`)
+        .search(DIRECTORY_SEARCH_CLAUSE(escapedQuery))
         .select('id,displayName,jobTitle,department,mail,mobilePhone,businessPhones,onPremisesDistinguishedName')
         .top(15)
         .get();

@@ -148,7 +148,7 @@ const peoplePickerStyles = {
 const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetProps> = (props) => {
     const { context } = props;
     const theme = useTheme();
-    const { canManageOnboarding, canEditOnboarding } = usePermissions(context);
+    const { canManageOnboarding, canEditOnboarding, canViewOnboarding } = usePermissions(context);
 
     const [kind, setKind] = React.useState<OnboardingKind>('katilis');
     const [state, setState] = React.useState<LoadState>('loading');
@@ -484,6 +484,16 @@ const OnboardingTrackerWidget: React.FunctionComponent<IOnboardingTrackerWidgetP
 
     const pageCount = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
     const pagedRecords = records.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+    // ÖNCEKİ HATA (güvenlik): bu widget önceden HERKESE (grup üyeliğinden
+    // bağımsız) tüm çalışan katılış/ayrılış tablosunu gösteriyordu — sadece
+    // "+" ve kalem/düzenle ikonları gizleniyordu, tablonun kendisi değil.
+    // Artık İK, BT veya Muhasebe grubunda olmayan kullanıcılar widget'ı hiç
+    // görmüyor (canViewOnboarding grup listesi yüklenene kadar da false
+    // başlar — "güvenli taraf" varsayılanı, bkz. usePermissions.ts).
+    if (!canViewOnboarding) {
+        return null;
+    }
 
     return (
         <WidgetCard

@@ -443,6 +443,13 @@ export const getUpcomingEvents = async (context: WebPartContext): Promise<IUpcom
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
+    // ÖNCEKİ HATA: kullanıcı listenin GÖRÜNTÜLEME sırasını "yeniden eskiye"
+    // (en uzak tarihli etkinlik en üstte) istedi — ama sadece sıralamayı
+    // tersine çevirip slice(0,6)'yı olduğu gibi bırakmak YANLIŞ olurdu:
+    // 6'dan fazla yaklaşan etkinlik varsa bu, YARIN'ki etkinliği listeden
+    // tamamen düşürüp yerine 6 ay sonraki bir etkinliği gösterirdi. Bu yüzden
+    // önce (ASC) en YAKIN 6 etkinlik seçiliyor, ANCAK O 6'sı görüntülenmeden
+    // önce (DESC) en uzaktan en yakına yeniden sıralanıyor.
     const upcoming = items
         .filter((item) => {
             const raw = item[EVENT_DATE_FIELD] as string | undefined;
@@ -454,7 +461,9 @@ export const getUpcomingEvents = async (context: WebPartContext): Promise<IUpcom
         })
         .sort((a, b) =>
             new Date(a[EVENT_DATE_FIELD] as string).getTime() - new Date(b[EVENT_DATE_FIELD] as string).getTime())
-        .slice(0, 6);
+        .slice(0, 6)
+        .sort((a, b) =>
+            new Date(b[EVENT_DATE_FIELD] as string).getTime() - new Date(a[EVENT_DATE_FIELD] as string).getTime());
 
     // Ekleri (attachment) SADECE "Attachments" alanı true olan öğeler için,
     // hepsi PARALEL olarak çekiliyor.
