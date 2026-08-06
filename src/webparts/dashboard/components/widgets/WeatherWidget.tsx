@@ -277,7 +277,11 @@ const WeatherWidget: React.FunctionComponent<IWeatherWidgetProps> = ({ apiKey })
             { iconName: 'Drop', label: 'Nem', value: `%${weather.humidity}` },
             { iconName: 'WindDirection', label: 'Rüzgar', value: `${weather.windKmh} km/s` },
             { iconName: 'Info', label: 'Hissedilen', value: `${weather.feelsLikeC}°C` },
-            { iconName: 'Gauge', label: 'Basınç', value: `${weather.pressureHpa} hPa` }
+            // ÖNCEKİ HATA: 'Gauge' Fluent'in ikon setinde HİÇ YOKTU (font-icons-mdl2
+            // paketinde böyle bir isim tanımlı değil) - bu yüzden ikon rozeti
+            // bomboş görünüyordu ("basınç kısmında sembol yok" geri bildirimi).
+            // 'CompassNW' gerçekten var olan, gösterge/kadran görünümlü bir ikon.
+            { iconName: 'CompassNW', label: 'Basınç', value: `${weather.pressureHpa} hPa` }
         ]
         : [];
 
