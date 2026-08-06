@@ -346,10 +346,18 @@ const UpcomingEvents: React.FunctionComponent<IUpcomingEventsProps> = (props) =>
             color: theme.semanticColors.bodyText,
             marginTop: 12
         },
+        // ÖNCEKİ HATA: objectFit:'cover' + maxHeight kullanılıyordu — görsel
+        // kutunun oranına uymadığında (ör. dikey/kare bir fotoğraf) kenarlarından
+        // KIRPILIYORDU ("etkinliğe görsel koyunca kesiliyor" geri bildirimi).
+        // 'contain' ile görsel HİÇBİR ZAMAN kırpılmıyor — kutuya sığacak şekilde
+        // küçültülüyor, oranı farklıysa üstte/altta veya yanlarda kalan boşluk
+        // düz bir zeminle (theme.palette.neutralLighterAlt, kartın diğer
+        // "chip" zeminleriyle aynı ton) dolduruluyor.
         modalImage: {
             width: '100%',
-            maxHeight: 220,
-            objectFit: 'cover',
+            height: 220,
+            objectFit: 'contain',
+            background: theme.palette.neutralLighterAlt,
             borderRadius: '12px 12px 0 0',
             marginBottom: 16,
             display: 'block'

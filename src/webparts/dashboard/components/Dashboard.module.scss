@@ -130,10 +130,26 @@
 // Duyurular'ın hemen altında, ikisi arasında Bento grid'in genel boşluğuyla
 // (32px) aynı ritmi koruyan bir aralık — flex-grow:1 ile sütunun geri kalan
 // (Hava Durumu'ndan gelen fazla) yüksekliğini bu kart dolduruyor.
+// ÖNCEKİ HATA: "display:flex" burada flex-direction BELİRTİLMEDEN
+// kullanılıyordu (varsayılan: row) — bu satırın ana ekseni (main axis) YATAY
+// olduğu için tek çocuk (Yaklaşan Etkinlikler kartı) sadece DİKEYDE
+// (cross-axis, varsayılan align-items:stretch) tam boyu alıyordu, YATAYDA
+// (genişlik) ise sadece kendi içeriği kadar dar kalıyordu — Duyurular'dan
+// (X ekseninde) daha dar görünmesine yol açıyordu. flex-direction:column ile
+// eksenler yer değiştiriyor: artık cross-axis YATAY (genişlik otomatik
+// stretch), ana eksen DİKEY — çocuğa flex-grow:1 verilerek yükseklik
+// büyümesi de korunuyor.
 .stackedBelow {
     margin-top: 32px;
     flex-grow: 1;
     display: flex;
+    flex-direction: column;
+
+    > * {
+        flex-grow: 1;
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 /* Hızlı Erişim + Şirket Rehberi + Yaklaşan Etkinlikler + Kişisel Asistan
