@@ -17,6 +17,10 @@ export interface ITodayEvent {
     startLabel: string;
     endLabel: string;
     location: string;
+    /** Bitiş anı HAM (ISO) — widget bunu "şu an" ile karşılaştırıp bitmiş toplantıları listeden düşürmek için kullanır. */
+    endDateTime: string;
+    /** Tıklanınca açılacak bağlantı — varsa Teams "toplantıya katıl" linki, yoksa etkinliği Outlook'ta açan webLink. */
+    link: string;
 }
 
 export interface ITodoTask {
@@ -69,6 +73,8 @@ interface IGraphEvent {
     start: { dateTime: string };
     end: { dateTime: string };
     location?: { displayName?: string };
+    webLink: string;
+    onlineMeeting?: { joinUrl?: string };
 }
 
 interface IGraphTodoTask {
@@ -290,7 +296,7 @@ export const getTodayEvents = async (context: WebPartContext): Promise<ITodayEve
             startDateTime: startOfDay.toISOString(),
             endDateTime: endOfDay.toISOString()
         })
-        .select('id,subject,start,end,location')
+        .select('id,subject,start,end,location,webLink,onlineMeeting')
         .orderby('start/dateTime')
         .top(10)
         .get();
@@ -301,7 +307,9 @@ export const getTodayEvents = async (context: WebPartContext): Promise<ITodayEve
         subject: e.subject,
         startLabel: timeLabel(e.start.dateTime),
         endLabel: timeLabel(e.end.dateTime),
-        location: e.location?.displayName ?? ''
+        location: e.location?.displayName ?? '',
+        endDateTime: e.end.dateTime,
+        link: e.onlineMeeting?.joinUrl || e.webLink
     }));
 };
 

@@ -41,6 +41,16 @@ const PersonalAssistant: React.FunctionComponent<IPersonalAssistantProps> = (pro
 
     const [events, setEvents] = React.useState<ITodayEvent[]>([]);
     const [eventsState, setEventsState] = React.useState<LoadState>('loading');
+    // Bitiş saati geçmiş toplantılar listeden düşsün diye "şu an" dakikada bir
+    // yenileniyor — sayfa açık kaldığı sürece toplantı bitince otomatik kalkar,
+    // sayfayı yenilemek gerekmez. HeaderClock'taki saniyelik tik deseniyle aynı
+    // mantık, ama burada dakikalık hassasiyet yeterli (gereksiz re-render yok).
+    const [now, setNow] = React.useState(() => Date.now());
+    React.useEffect(() => {
+        const interval = window.setInterval(() => setNow(Date.now()), 60000);
+        return () => window.clearInterval(interval);
+    }, []);
+    const visibleEvents = events.filter((ev) => new Date(ev.endDateTime).getTime() > now);
 
     const [tasks, setTasks] = React.useState<ITodoTask[]>([]);
     const [tasksState, setTasksState] = React.useState<LoadState>('loading');
@@ -189,10 +199,25 @@ const PersonalAssistant: React.FunctionComponent<IPersonalAssistantProps> = (pro
             marginRight: 6
         },
         // NOT: "gap" burada da kullanılmıyor — eventTime'a marginRight verildi.
+        // Toplantı satırı artık tıklanabilir bir <button> — Teams'te "katıl"
+        // linki varsa oraya, yoksa etkinliği Outlook'ta açan webLink'e gider
+        // (bkz. GraphService.ts ITodayEvent.link).
         eventRow: {
             display: 'flex',
+            width: '100%',
             padding: '8px 0',
-            borderBottom: `1px solid ${theme.semanticColors.variantBorder}`
+            borderWidth: '0 0 1px 0',
+            borderStyle: 'solid',
+            borderColor: theme.semanticColors.variantBorder,
+            background: 'transparent',
+            textAlign: 'left',
+            font: 'inherit',
+            cursor: 'pointer',
+            borderRadius: 6,
+            transition: 'background 0.15s ease',
+            selectors: {
+                ':hover': { background: theme.palette.neutralLighterAlt }
+            }
         },
         eventTime: {
             fontSize: 11,
@@ -273,17 +298,23 @@ const PersonalAssistant: React.FunctionComponent<IPersonalAssistantProps> = (pro
                     {eventsState === 'error' && (
                         <MessageBar messageBarType={MessageBarType.error}>{DATA_UNAVAILABLE_MESSAGE}</MessageBar>
                     )}
-                    {eventsState === 'loaded' && events.length === 0 && (
+                    {eventsState === 'loaded' && visibleEvents.length === 0 && (
                         <span className={styles.emptyHint}>Bugün için planlanmış toplantınız yok.</span>
                     )}
-                    {eventsState === 'loaded' && events.map((ev) => (
-                        <div key={ev.id} className={styles.eventRow}>
+                    {eventsState === 'loaded' && visibleEvents.map((ev) => (
+                        <button
+                            key={ev.id}
+                            type="button"
+                            className={styles.eventRow}
+                            onClick={() => window.open(ev.link, '_blank', 'noopener,noreferrer')}
+                            title={`${ev.subject} — toplantıya git`}
+                        >
                             <span className={styles.eventTime}>{ev.startLabel} - {ev.endLabel}</span>
                             <div>
                                 <div className={styles.eventSubject}>{ev.subject}</div>
                                 {ev.location && <div className={styles.eventLocation}>{ev.location}</div>}
                             </div>
-                        </div>
+                        </button>
                     ))}
                 </div>
 

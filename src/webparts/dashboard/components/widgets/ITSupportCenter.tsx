@@ -12,9 +12,19 @@ const ITSupportCenter: React.FunctionComponent = () => {
         // sayfanın render edildiği (kurumsal/eski) tarayıcı ortamında flex "gap"
         // desteklenmiyor. `flexWrap: 'wrap'` olduğu için iconWrap/text kendi
         // marginRight + marginBottom'larını taşıyor; son çocuk (ticket) dokunulmadan kalıyor.
+        // ÖNCEKİ HATA: WidgetCard'ın gövdesi (.body, bkz. WidgetCard.tsx) zaten
+        // kartın tüm kalan yüksekliğini dolduruyor (flexGrow:1) — ama banner
+        // kendi DOĞAL/içerik yüksekliğinde kalıyordu, bu yüzden komşu widget
+        // (aynı grid satırındaki) daha uzunsa altında boş beyaz alan kalıyordu.
+        // height:'100%' vermek, zaten var olan alignItems:'center' sayesinde
+        // içeriği otomatik olarak dikey ortalıyor — "Zimmetlerim" ile aynı
+        // kod/tasarım olduğu için SADECE bu widget'a özgü bir görsel fark
+        // kalmıyor.
         banner: {
             display: 'flex',
             alignItems: 'center',
+            height: '100%',
+            boxSizing: 'border-box',
             padding: '28px 32px',
             borderRadius: 12,
             background: `linear-gradient(135deg, ${theme.palette.themeLighterAlt} 0%, ${theme.palette.themeLighter} 100%)`,
