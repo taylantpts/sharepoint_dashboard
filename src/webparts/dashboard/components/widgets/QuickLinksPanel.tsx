@@ -13,13 +13,12 @@ interface IQuickLink {
 // Renkler bilinçli olarak Fluent UI'ın canlı kurumsal paletinden seçildi —
 // her kutucuk farklı bir vurgu rengiyle görsel çeşitlilik sağlar.
 const QUICK_LINKS: IQuickLink[] = [
-    { id: 'ql-1', label: 'Sözlük', iconName: 'Dictionary', href: 'https://yorpas.sharepoint.com/sites/YORPASA/Lists/Komagene_Sozluk/Szlk%20Galerisi.aspx', color: '#0078d4' },
-    { id: 'ql-2', label: 'Eğitim', iconName: 'Education', href: 'https://egitim.komagene.com.tr/login/index.php', color: '#107c10' },
-    { id: 'ql-3', label: 'Bayi Sipariş', iconName: 'ShoppingCart', href: 'https://genegenekomagene.com/Admin/Login.aspx', color: '#d83b01' },
+    { id: 'ql-1', label: 'Komagene Sözlük', iconName: 'Dictionary', href: 'https://yorpas.sharepoint.com/sites/YORPASA/Lists/Komagene_Sozluk/Szlk%20Galerisi.aspx', color: '#0078d4' },
+    { id: 'ql-2', label: 'Komagene Eğitim', iconName: 'Education', href: 'https://egitim.komagene.com.tr/login/index.php', color: '#107c10' },
+    { id: 'ql-3', label: 'Bayi Sipariş Sistemi', iconName: 'ShoppingCart', href: 'https://genegenekomagene.com/Admin/Login.aspx', color: '#d83b01' },
     { id: 'ql-4', label: 'Komagene Portal', iconName: 'Website', href: 'https://web.genegenekomagene.com/Admin/Login?ReturnUrl=/Admin/Default', color: '#038387' },
-    { id: 'ql-5', label: 'Masraff', iconName: 'Money', href: 'https://admin.masraff.co/#/access/login', color: '#5c2d91' },
-    { id: 'ql-6', label: 'Entegre Yönetim', iconName: 'Settings', href: 'https://qdms.komagene.com.tr/QDMSNET/BSAT/Logon.aspx', color: '#b4009e' },
-    { id: 'ql-7', label: 'Organizasyon Şeması', iconName: 'Org', href: 'https://yorpas.sharepoint.com/SiteAssets/SitePages/Y%C3%B6rpa%C5%9F/Organizasyon-%C5%9Eemas%C4%B1_OCAK2026.pptx?web=1', color: '#004578' }
+    { id: 'ql-5', label: 'Masraff Uygulaması', iconName: 'Money', href: 'https://admin.masraff.co/#/access/login', color: '#5c2d91' },
+    { id: 'ql-6', label: 'QDMS Entegre Yönetimi', iconName: 'Settings', href: 'https://qdms.komagene.com.tr/QDMSNET/BSAT/Logon.aspx', color: '#b4009e' }
 ];
 
 const QuickLinksPanel: React.FunctionComponent = () => {
