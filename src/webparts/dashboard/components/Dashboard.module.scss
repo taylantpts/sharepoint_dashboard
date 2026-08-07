@@ -97,7 +97,7 @@
         'news news news news news news support support support support support support'
         'hr hr hr hr hr hr assets assets assets assets assets assets'
         'documents documents documents documents documents documents isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar'
-        'exercise exercise exercise exercise exercise exercise . . . . . .'
+        'exercise exercise exercise exercise exercise exercise water water water water water water'
         'recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers'
         'onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding'
         'locationOffice locationOffice locationOffice locationOffice locationOffice locationOffice locationFactory locationFactory locationFactory locationFactory locationFactory locationFactory'
@@ -244,11 +244,15 @@
     min-width: 0;
 }
 
-/* Esneme Molası — kare gibi kompakt bir kart olsun diye 6/12 genişlikte;
- * satırın SOLUNDA duruyor (sağ yarısı şimdilik boş "." hücreler — panodaki
- * diğer yarım-genişlik satırlar gibi yanına bir eş widget eklenecek). */
+/* Esneme Molası — kare gibi kompakt bir kart olsun diye 6/12 genişlikte,
+ * satırın solunda; sağında Su İçme Takibi (areaWater) ile eşleniyor. */
 .areaExercise {
     grid-area: exercise;
+    min-width: 0;
+}
+
+.areaWater {
+    grid-area: water;
     min-width: 0;
 }
 
@@ -292,7 +296,7 @@
             'news support'
             'hr assets'
             'documents isgCalendar'
-            'exercise exercise'
+            'exercise water'
             'recentJoiners recentLeavers'
             'onboarding onboarding'
             'locationOffice locationFactory'
@@ -325,6 +329,7 @@
             'documents'
             'isgCalendar'
             'exercise'
+            'water'
             'recentJoiners'
             'recentLeavers'
             'onboarding'

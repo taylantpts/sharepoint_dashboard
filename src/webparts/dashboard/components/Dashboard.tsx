@@ -25,6 +25,7 @@ import OnboardingTrackerWidget from './widgets/OnboardingTrackerWidget';
 import RecentOnboardingWidget from './widgets/RecentOnboardingWidget';
 import IkinciElWidget from './widgets/IkinciElWidget';
 import DeskExerciseWidget from './widgets/DeskExerciseWidget';
+import WaterIntakeWidget from './widgets/WaterIntakeWidget';
 
 const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
     return (
@@ -112,6 +113,9 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
 
                 <div className={styles.areaExercise}>
                     <DeskExerciseWidget />
+                </div>
+                <div className={styles.areaWater}>
+                    <WaterIntakeWidget />
                 </div>
 
                 <div id="dashboard-anchor-katilis" className={styles.areaRecentJoiners}>
