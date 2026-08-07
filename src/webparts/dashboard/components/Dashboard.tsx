@@ -24,6 +24,7 @@ import BirthdaysWidget from './widgets/BirthdaysWidget';
 import OnboardingTrackerWidget from './widgets/OnboardingTrackerWidget';
 import RecentOnboardingWidget from './widgets/RecentOnboardingWidget';
 import IkinciElWidget from './widgets/IkinciElWidget';
+import DeskExerciseWidget from './widgets/DeskExerciseWidget';
 
 const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
     return (
@@ -108,6 +109,11 @@ const Dashboard: React.FunctionComponent<IDashboardProps> = (props) => {
                 <div className={styles.areaISGCalendar}>
                     <ISGCalendarWidget context={props.context} />
                 </div>
+
+                <div className={styles.areaExercise}>
+                    <DeskExerciseWidget />
+                </div>
+
                 <div id="dashboard-anchor-katilis" className={styles.areaRecentJoiners}>
                     <RecentOnboardingWidget
                         context={props.context}

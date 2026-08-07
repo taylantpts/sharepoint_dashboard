@@ -97,6 +97,7 @@
         'news news news news news news support support support support support support'
         'hr hr hr hr hr hr assets assets assets assets assets assets'
         'documents documents documents documents documents documents isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar'
+        'exercise exercise exercise exercise exercise exercise exercise exercise exercise exercise exercise exercise'
         'recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers'
         'onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding'
         'locationOffice locationOffice locationOffice locationOffice locationOffice locationOffice locationFactory locationFactory locationFactory locationFactory locationFactory locationFactory'
@@ -243,6 +244,13 @@
     min-width: 0;
 }
 
+/* Masa Başı Molası — İkinci El İlanlar/Katılış & Ayrılış ile aynı mantık:
+ * tam genişlik (12/12), egzersiz görseline nefes alacağı yer versin diye. */
+.areaExercise {
+    grid-area: exercise;
+    min-width: 0;
+}
+
 /* Katılış & Ayrılış Takibi — kullanıcı isteğiyle tam genişlikte (12/12),
  * tek sütun, konum kartlarının (Merkez Ofis/Fabrika) hemen üstünde. */
 .areaOnboarding {
@@ -283,6 +291,7 @@
             'news support'
             'hr assets'
             'documents isgCalendar'
+            'exercise exercise'
             'recentJoiners recentLeavers'
             'onboarding onboarding'
             'locationOffice locationFactory'
@@ -314,6 +323,7 @@
             'assets'
             'documents'
             'isgCalendar'
+            'exercise'
             'recentJoiners'
             'recentLeavers'
             'onboarding'
