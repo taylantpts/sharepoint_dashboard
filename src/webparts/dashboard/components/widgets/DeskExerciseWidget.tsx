@@ -11,14 +11,14 @@ interface IStretchCategory {
 }
 
 /**
- * ÖNCEKİ SÜRÜMLER wger.de'nin (açık kaynaklı, üçüncü kişilerce yüklenen)
- * egzersiz görsellerini kullanıyordu — kullanıcı bunları "dandik" ve
- * birbirinden farklı temada buldu (bazıları gerçek fotoğraf, bazıları 3D
- * render, biri hatta hareketle alakasız bir logo çıktı). Dışarıdan hiçbir
- * görsele bağımlı olmamak için 4 hareket artık kendi SVG çizimimizle
- * (StretchIllustration) çiziliyor — tek elden, tek çizgi stiliyle, her
- * zaman aynı temada ve her zaman erişilebilir (ağ isteği/CORS/bozuk link
- * riski yok).
+ * ÖNCEKİ SÜRÜM (ince çizgili "çöp adam" SVG'ler) kullanıcı tarafından
+ * "dandik" bulundu — ince stroke'lu iskelet çizimler kurumsal bir panoda
+ * amatör/taslak gibi duruyordu. Bunun yerine QuickLinksPanel/WidgetCard'ta
+ * zaten kullanılan "renkli degrade daire + beyaz ikon" diliyle aynı
+ * mantıkta, KALIN yuvarlak uçlu (round line cap) beyaz figür + doygun
+ * degrade daire arka plan kullanılıyor — "ahşap eklemli manken" tarzı sade
+ * ama dolgun bir siluet, ince çöp-adam çizgilerinden çok daha "tasarlanmış"
+ * görünüyor. Yine tamamen kendi SVG çizimimiz — dış görsele bağımlılık yok.
  */
 const CATEGORIES: IStretchCategory[] = [
     {
@@ -51,66 +51,58 @@ const CATEGORIES: IStretchCategory[] = [
     }
 ];
 
-// Dört hareketin de gövde/kol/bacak "iskeleti" ortak — sadece kol pozu ve
-// varsa hareket ipucu (ok/duvar çizgisi) değişiyor. Böylece dört çizim de
-// aynı orantı ve çizgi kalınlığıyla, tek bir elden çıkmış gibi görünüyor.
-const StretchIllustration: React.FunctionComponent<{ pose: string; color: string }> = ({ pose, color }) => {
-    const common = (
+// Dört hareketin de gövde/bacak "iskeleti" ortak (aynı omuz/kalça/bacak
+// koordinatları) — sadece kol pozu ve baş konumu değişiyor. Kalın (stroke
+// 10), yuvarlak uçlu tek-parça çizgiler eklem yerlerinde doğal olarak
+// birleşip dolgun bir siluet oluşturuyor; ayrıca ince/donuk bir hareket
+// yayı (dashed, opacity 0.55) — eski kalın/keskin ok ikonları kaldırıldı.
+const StretchIllustration: React.FunctionComponent<{ pose: string }> = ({ pose }) => {
+    const legsAndHips = (
         <>
-            <line x1="38" y1="72" x2="62" y2="72" />
-            <line x1="38" y1="72" x2="33" y2="98" />
-            <line x1="62" y1="72" x2="67" y2="98" />
+            <line x1="32" y1="36" x2="68" y2="36" />
+            <line x1="50" y1="34" x2="50" y2="68" />
+            <line x1="40" y1="68" x2="60" y2="68" />
+            <line x1="40" y1="68" x2="34" y2="95" />
+            <line x1="60" y1="68" x2="66" y2="95" />
         </>
     );
 
     return (
-        <svg viewBox="0 0 100 100" fill="none" stroke={color} strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 100 100" fill="none" stroke="#ffffff" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round">
             {pose === 'neck' && (
                 <>
-                    <circle cx="40" cy="20" r="9" fill={color} stroke="none" />
-                    <path d="M46 27 L50 33" />
-                    <line x1="35" y1="33" x2="65" y2="33" />
-                    <line x1="50" y1="33" x2="50" y2="72" />
-                    <line x1="35" y1="33" x2="28" y2="58" />
-                    <line x1="65" y1="33" x2="72" y2="58" />
-                    <path d="M22 16 Q17 20 22 26" strokeWidth={3.5} />
-                    <path d="M58 10 Q63 14 58 20" strokeWidth={3.5} />
-                    {common}
+                    <path d="M50 34 Q42 26 37 22" strokeWidth={10} />
+                    <circle cx="35" cy="18" r="11" fill="#ffffff" stroke="none" />
+                    <line x1="32" y1="36" x2="24" y2="58" />
+                    <line x1="68" y1="36" x2="76" y2="58" />
+                    <path d="M20 6 A22 22 0 0 1 50 6" strokeWidth={3} strokeDasharray="1 7" opacity={0.55} />
+                    {legsAndHips}
                 </>
             )}
             {pose === 'shoulder' && (
                 <>
-                    <circle cx="50" cy="18" r="9" fill={color} stroke="none" />
-                    <line x1="50" y1="27" x2="50" y2="33" />
-                    <line x1="35" y1="33" x2="65" y2="33" />
-                    <line x1="50" y1="33" x2="50" y2="72" />
-                    <line x1="35" y1="33" x2="28" y2="58" />
-                    <path d="M65 33 L82 30 L88 40" />
-                    <line x1="90" y1="14" x2="90" y2="50" strokeWidth={3} />
-                    {common}
+                    <circle cx="50" cy="20" r="11" fill="#ffffff" stroke="none" />
+                    <line x1="32" y1="36" x2="24" y2="58" />
+                    <path d="M68 36 L84 40 L88 52" />
+                    <line x1="90" y1="18" x2="90" y2="58" strokeWidth={3} opacity={0.55} />
+                    {legsAndHips}
                 </>
             )}
             {pose === 'back' && (
                 <>
-                    <circle cx="50" cy="18" r="9" fill={color} stroke="none" />
-                    <line x1="50" y1="27" x2="50" y2="33" />
-                    <line x1="20" y1="38" x2="80" y2="30" />
-                    <line x1="50" y1="33" x2="50" y2="72" />
-                    <path d="M28 50 A26 26 0 1 1 34 68" strokeWidth={3.5} />
-                    <path d="M31 62 L34 68 L40 65" strokeWidth={3.5} />
-                    {common}
+                    <circle cx="50" cy="20" r="11" fill="#ffffff" stroke="none" />
+                    <line x1="18" y1="42" x2="82" y2="30" />
+                    <path d="M24 52 A28 28 0 1 0 30 72" strokeWidth={3} strokeDasharray="1 7" opacity={0.55} />
+                    {legsAndHips}
                 </>
             )}
             {pose === 'arm' && (
                 <>
-                    <circle cx="50" cy="18" r="9" fill={color} stroke="none" />
-                    <line x1="50" y1="27" x2="50" y2="33" />
-                    <line x1="35" y1="33" x2="65" y2="33" />
-                    <line x1="50" y1="33" x2="50" y2="72" />
-                    <line x1="35" y1="33" x2="30" y2="52" />
-                    <line x1="30" y1="52" x2="42" y2="58" />
-                    <path d="M65 33 Q78 40 68 14 Q60 4 55 15" />
-                    {common}
+                    <circle cx="50" cy="20" r="11" fill="#ffffff" stroke="none" />
+                    <line x1="32" y1="36" x2="26" y2="54" />
+                    <line x1="26" y1="54" x2="40" y2="60" />
+                    <path d="M68 36 Q82 44 70 12 Q62 0 55 14" />
+                    {legsAndHips}
                 </>
             )}
         </svg>
@@ -155,10 +147,6 @@ const DeskExerciseWidget: React.FunctionComponent = () => {
             color: theme.palette.themePrimary,
             boxShadow: '0 1px 4px rgba(0,0,0,0.12)'
         },
-        // Widget artık İSG Takvimi ile aynı en/boy oranına yakın (bkz.
-        // Dashboard.module.scss .areaExercise — yarım genişlik) — çizim de
-        // bu kareye uyum sağlasın diye flex-grow ile kalan tüm dikey alanı
-        // dolduruyor, taban çizgisi hep ortada kalıyor.
         contentCol: {
             display: 'flex',
             flexDirection: 'column',
@@ -167,23 +155,26 @@ const DeskExerciseWidget: React.FunctionComponent = () => {
             flexGrow: 1,
             minHeight: 0
         },
+        // Renkli degrade daire arka plan — QuickLinksPanel.tsx'teki iconWrap
+        // ile AYNI mantık (linear-gradient 135deg + renkli box-shadow),
+        // sadece burada tüm görsel alanı kaplayacak kadar büyük bir daire.
         imageWrap: {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             width: '100%',
-            maxWidth: 220,
+            maxWidth: 200,
             aspectRatio: '1 / 1',
-            borderRadius: 16,
-            background: theme.palette.neutralLighterAlt,
+            borderRadius: '50%',
             flexShrink: 1,
             minHeight: 0,
             overflow: 'hidden',
-            marginBottom: 16
+            marginBottom: 16,
+            transition: 'background 0.2s ease, box-shadow 0.2s ease'
         },
         image: {
-            width: '78%',
-            height: '78%'
+            width: '62%',
+            height: '62%'
         },
         textCol: {
             minWidth: 0,
@@ -220,9 +211,15 @@ const DeskExerciseWidget: React.FunctionComponent = () => {
                     ))}
                 </div>
                 <div className={styles.contentCol}>
-                    <div className={styles.imageWrap}>
+                    <div
+                        className={styles.imageWrap}
+                        style={{
+                            background: `linear-gradient(135deg, ${selected.color} 0%, ${selected.color}cc 100%)`,
+                            boxShadow: `0 8px 20px ${selected.color}55`
+                        }}
+                    >
                         <div className={styles.image}>
-                            <StretchIllustration pose={selected.key} color={selected.color} />
+                            <StretchIllustration pose={selected.key} />
                         </div>
                     </div>
                     <div className={styles.textCol}>
