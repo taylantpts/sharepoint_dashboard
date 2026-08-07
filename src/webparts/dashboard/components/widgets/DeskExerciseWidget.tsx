@@ -7,107 +7,49 @@ interface IStretchCategory {
     label: string;
     exerciseName: string;
     instruction: string;
-    color: string;
+    imageUrl: string;
 }
 
 /**
- * ÖNCEKİ SÜRÜM (ince çizgili "çöp adam" SVG'ler) kullanıcı tarafından
- * "dandik" bulundu — ince stroke'lu iskelet çizimler kurumsal bir panoda
- * amatör/taslak gibi duruyordu. Bunun yerine QuickLinksPanel/WidgetCard'ta
- * zaten kullanılan "renkli degrade daire + beyaz ikon" diliyle aynı
- * mantıkta, KALIN yuvarlak uçlu (round line cap) beyaz figür + doygun
- * degrade daire arka plan kullanılıyor — "ahşap eklemli manken" tarzı sade
- * ama dolgun bir siluet, ince çöp-adam çizgilerinden çok daha "tasarlanmış"
- * görünüyor. Yine tamamen kendi SVG çizimimiz — dış görsele bağımlılık yok.
+ * ÖNCEKİ İKİ SÜRÜM (wger.de'nin karışık-stil görselleri, sonra kendi
+ * çizdiğimiz "manken" SVG'ler) kullanıcı tarafından sırasıyla "dandik" ve
+ * "iğrenç" bulundu. Bu sürüm free-exercise-db (github.com/yuhonas/
+ * free-exercise-db, Unlicense/kamu malı) veri setinden — TEK bir stüdyoda,
+ * TEK bir modelle, aynı ışık/arka planla çekilmiş GERÇEK fotoğraflar
+ * kullanıyor; bu yüzden dördü de birbiriyle tutarlı, profesyonel görünüyor.
+ * jsDelivr CDN üzerinden <img> ile gösteriliyor (CORS/fetch riski yok, sabit
+ * URL'ler) — API anahtarı gerekmiyor.
  */
 const CATEGORIES: IStretchCategory[] = [
     {
         key: 'neck',
         label: 'Boyun',
-        exerciseName: 'Boyun Eğme',
-        instruction: 'Kulağınızı yavaşça omzunuza yaklaştırın, iki tarafı da yapın.',
-        color: '#0078d4'
+        exerciseName: 'Boyun Yan Gerinmesi',
+        instruction: 'Elinizle başınızı yavaşça omzunuza doğru çekin, iki tarafı da yapın.',
+        imageUrl: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Neck_Stretch/1.jpg'
     },
     {
         key: 'shoulder',
         label: 'Omuz',
-        exerciseName: 'Omuz ve Göğüs Gerdirme',
-        instruction: 'Kolunuzu arkanızda bir duvara ya da kapı kenarına yaslayıp gövdenizi hafifçe öne çevirin.',
-        color: '#107c10'
+        exerciseName: 'Omuz Gerdirme',
+        instruction: 'Bir kolunuzu göğsünüzün önünden karşı yöne doğru çekip diğer kolunuzla nazikçe destekleyin.',
+        imageUrl: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Shoulder_Stretch/1.jpg'
     },
     {
         key: 'back',
         label: 'Sırt',
-        exerciseName: 'Gövde Çevirme',
-        instruction: 'Ayakta kollarınızı yana açın, belinizden gövdenizi yavaşça sağa ve sola çevirin.',
-        color: '#d83b01'
+        exerciseName: 'Ayakta Yan Gerinme',
+        instruction: 'Ayakta bir kolunuzu başınızın üzerinden karşı yöne uzatıp gövdenizi o yöne doğru esnetin.',
+        imageUrl: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Lateral_Stretch/1.jpg'
     },
     {
         key: 'arm',
         label: 'Kol',
         exerciseName: 'Kol Arkası (Triceps) Gerinmesi',
         instruction: 'Bir kolunuzu başınızın üzerinden arkaya doğru katlayıp diğer elinizle dirseğinizi nazikçe destekleyin.',
-        color: '#5c2d91'
+        imageUrl: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Triceps_Stretch/1.jpg'
     }
 ];
-
-// Dört hareketin de gövde/bacak "iskeleti" ortak (aynı omuz/kalça/bacak
-// koordinatları) — sadece kol pozu ve baş konumu değişiyor. Kalın (stroke
-// 10), yuvarlak uçlu tek-parça çizgiler eklem yerlerinde doğal olarak
-// birleşip dolgun bir siluet oluşturuyor; ayrıca ince/donuk bir hareket
-// yayı (dashed, opacity 0.55) — eski kalın/keskin ok ikonları kaldırıldı.
-const StretchIllustration: React.FunctionComponent<{ pose: string }> = ({ pose }) => {
-    const legsAndHips = (
-        <>
-            <line x1="32" y1="36" x2="68" y2="36" />
-            <line x1="50" y1="34" x2="50" y2="68" />
-            <line x1="40" y1="68" x2="60" y2="68" />
-            <line x1="40" y1="68" x2="34" y2="95" />
-            <line x1="60" y1="68" x2="66" y2="95" />
-        </>
-    );
-
-    return (
-        <svg viewBox="0 0 100 100" fill="none" stroke="#ffffff" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round">
-            {pose === 'neck' && (
-                <>
-                    <path d="M50 34 Q42 26 37 22" strokeWidth={10} />
-                    <circle cx="35" cy="18" r="11" fill="#ffffff" stroke="none" />
-                    <line x1="32" y1="36" x2="24" y2="58" />
-                    <line x1="68" y1="36" x2="76" y2="58" />
-                    <path d="M20 6 A22 22 0 0 1 50 6" strokeWidth={3} strokeDasharray="1 7" opacity={0.55} />
-                    {legsAndHips}
-                </>
-            )}
-            {pose === 'shoulder' && (
-                <>
-                    <circle cx="50" cy="20" r="11" fill="#ffffff" stroke="none" />
-                    <line x1="32" y1="36" x2="24" y2="58" />
-                    <path d="M68 36 L84 40 L88 52" />
-                    <line x1="90" y1="18" x2="90" y2="58" strokeWidth={3} opacity={0.55} />
-                    {legsAndHips}
-                </>
-            )}
-            {pose === 'back' && (
-                <>
-                    <circle cx="50" cy="20" r="11" fill="#ffffff" stroke="none" />
-                    <line x1="18" y1="42" x2="82" y2="30" />
-                    <path d="M24 52 A28 28 0 1 0 30 72" strokeWidth={3} strokeDasharray="1 7" opacity={0.55} />
-                    {legsAndHips}
-                </>
-            )}
-            {pose === 'arm' && (
-                <>
-                    <circle cx="50" cy="20" r="11" fill="#ffffff" stroke="none" />
-                    <line x1="32" y1="36" x2="26" y2="54" />
-                    <line x1="26" y1="54" x2="40" y2="60" />
-                    <path d="M68 36 Q82 44 70 12 Q62 0 55 14" />
-                    {legsAndHips}
-                </>
-            )}
-        </svg>
-    );
-};
 
 const DeskExerciseWidget: React.FunctionComponent = () => {
     const theme = useTheme();
@@ -155,26 +97,25 @@ const DeskExerciseWidget: React.FunctionComponent = () => {
             flexGrow: 1,
             minHeight: 0
         },
-        // Renkli degrade daire arka plan — QuickLinksPanel.tsx'teki iconWrap
-        // ile AYNI mantık (linear-gradient 135deg + renkli box-shadow),
-        // sadece burada tüm görsel alanı kaplayacak kadar büyük bir daire.
+        // GERÇEK fotoğraf — oranı ne olursa olsun TAM KARE bir çerçevede
+        // (aspectRatio 1/1) gösteriliyor, objectFit "cover" ile kırpılmadan/
+        // gerilmeden kareyi dolduruyor; object-position üstte tutuyor ki
+        // hareketin asıl göründüğü üst gövde/kollar kadraj dışı kalmasın.
         imageWrap: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             width: '100%',
-            maxWidth: 200,
+            maxWidth: 220,
             aspectRatio: '1 / 1',
-            borderRadius: '50%',
-            flexShrink: 1,
-            minHeight: 0,
+            borderRadius: 16,
             overflow: 'hidden',
             marginBottom: 16,
-            transition: 'background 0.2s ease, box-shadow 0.2s ease'
+            background: theme.palette.neutralLighterAlt,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
         },
         image: {
-            width: '62%',
-            height: '62%'
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center 15%'
         },
         textCol: {
             minWidth: 0,
@@ -192,6 +133,15 @@ const DeskExerciseWidget: React.FunctionComponent = () => {
             color: theme.semanticColors.bodySubtext,
             maxWidth: 280,
             margin: '0 auto'
+        },
+        credit: {
+            fontSize: 10,
+            color: theme.semanticColors.bodySubtext,
+            textAlign: 'right',
+            marginTop: 10
+        },
+        creditLink: {
+            color: theme.semanticColors.bodySubtext
         }
     });
 
@@ -211,21 +161,19 @@ const DeskExerciseWidget: React.FunctionComponent = () => {
                     ))}
                 </div>
                 <div className={styles.contentCol}>
-                    <div
-                        className={styles.imageWrap}
-                        style={{
-                            background: `linear-gradient(135deg, ${selected.color} 0%, ${selected.color}cc 100%)`,
-                            boxShadow: `0 8px 20px ${selected.color}55`
-                        }}
-                    >
-                        <div className={styles.image}>
-                            <StretchIllustration pose={selected.key} />
-                        </div>
+                    <div className={styles.imageWrap}>
+                        <img src={selected.imageUrl} alt={selected.exerciseName} className={styles.image} />
                     </div>
                     <div className={styles.textCol}>
                         <div className={styles.exerciseName}>{selected.exerciseName}</div>
                         <div className={styles.instruction}>{selected.instruction}</div>
                     </div>
+                </div>
+                <div className={styles.credit}>
+                    Görsel:{' '}
+                    <a href="https://yuhonas.github.io/free-exercise-db/" target="_blank" rel="noopener noreferrer" className={styles.creditLink}>
+                        free-exercise-db
+                    </a>
                 </div>
             </div>
         </WidgetCard>
