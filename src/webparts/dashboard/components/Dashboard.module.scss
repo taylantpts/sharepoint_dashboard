@@ -97,7 +97,7 @@
         'news news news news news news support support support support support support'
         'hr hr hr hr hr hr assets assets assets assets assets assets'
         'documents documents documents documents documents documents isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar isgCalendar'
-        'exercise exercise exercise exercise exercise exercise exercise exercise exercise exercise exercise exercise'
+        '. . . exercise exercise exercise exercise exercise exercise . . .'
         'recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentJoiners recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers recentLeavers'
         'onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding onboarding'
         'locationOffice locationOffice locationOffice locationOffice locationOffice locationOffice locationFactory locationFactory locationFactory locationFactory locationFactory locationFactory'
@@ -244,8 +244,12 @@
     min-width: 0;
 }
 
-/* Masa Başı Molası — İkinci El İlanlar/Katılış & Ayrılış ile aynı mantık:
- * tam genişlik (12/12), egzersiz görseline nefes alacağı yer versin diye. */
+/* Esneme Molası — kullanıcı widget'ın İSG Takvimi ile aynı en/boy oranında
+ * (kare gibi) olmasını istedi; tam genişlik (12/12) bir "afiş" yerine artık
+ * 6/12 genişliğinde, satırın ortasında duran tek bir kart (bkz. .grid
+ * grid-template-areas'taki '. . . exercise ... . . .' satırı — sağındaki/
+ * solundaki "." hücreleri kasıtlı olarak boş bırakılıyor, komşu bir widget'a
+ * zorla eşlenmiyor). */
 .areaExercise {
     grid-area: exercise;
     min-width: 0;
